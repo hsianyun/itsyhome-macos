@@ -38,10 +38,12 @@ final class PlatformManagerTests: XCTestCase {
 
     // MARK: - Selected platform tests
 
-    func testDefaultBuildFeaturesControlPlatformSelection() {
+    func testDefaultBuildFeaturesControlStoredPlatformSelection() {
+        userDefaults.set("homekit", forKey: "SelectedPlatform")
+        userDefaults.set(true, forKey: "HasCompletedOnboarding")
         let manager = PlatformManager(defaults: userDefaults)
-        XCTAssertEqual(manager.selectedPlatform, BuildFeatures.isHomeAssistantOnly ? .homeAssistant : .none)
-        XCTAssertEqual(manager.needsOnboarding, !BuildFeatures.isHomeAssistantOnly)
+        XCTAssertEqual(manager.selectedPlatform, BuildFeatures.isHomeAssistantOnly ? .homeAssistant : .homeKit)
+        XCTAssertFalse(manager.needsOnboarding)
     }
 
     func testHomeAssistantOnlyBuildIgnoresStoredHomeKitSelection() {
