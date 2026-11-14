@@ -25,6 +25,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha
+        # Override XcodeGen's application_iOS iPhone Developer preset.
+        CODE_SIGN_IDENTITY: "-"
         PRODUCT_NAME: Itsyhome HA
         INFOPLIST_KEY_CFBundleDisplayName: Itsyhome HA
         CODE_SIGN_ENTITLEMENTS: Itsyhome/HomeAssistantOnly.entitlements
@@ -40,7 +42,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha.macOSBridge
+        CODE_SIGN_IDENTITY: "-"
   macOSBridgeTests:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha.macOSBridgeTests
+        CODE_SIGN_IDENTITY: "-"
