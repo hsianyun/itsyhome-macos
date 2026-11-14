@@ -85,7 +85,7 @@ To stop running this version, quit it and remove its application bundle from App
 
 ## Developer verification
 
-The repository's GitHub Actions workflow runs the macOS tests on pushes to `main` and pull requests. To run the same signing-disabled test command on a Mac after generating the project:
+The included GitHub Actions workflow is configured to run the macOS tests on pushes to `main` and pull requests. If Actions is disabled for this fork, open the repository's **Actions** tab and enable its workflows first. To run the same signing-disabled test command on a Mac after generating the project:
 
 ```sh
 xcodebuild test \
