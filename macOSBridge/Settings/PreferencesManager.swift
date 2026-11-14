@@ -35,6 +35,9 @@ final class PreferencesManager {
         static let historyEnabled = "historyEnabled"
 
         // Per-home settings (use with homeKey helper)
+        static let menuBarClimateEnabled = "menuBarClimateEnabled"
+        static let menuBarTemperatureSensorId = "menuBarTemperatureSensorId"
+        static let menuBarHumiditySensorId = "menuBarHumiditySensorId"
         static let orderedFavouriteIds = "orderedFavouriteIds"
         static let favouriteSceneIds = "favouriteSceneIds"
         static let favouriteServiceIds = "favouriteServiceIds"
@@ -194,6 +197,31 @@ final class PreferencesManager {
         get { defaults.bool(forKey: Keys.sensorSummary) }
         set {
             defaults.set(newValue, forKey: Keys.sensorSummary)
+            postNotification()
+        }
+    }
+
+    // MARK: - Menu bar climate display (per-home)
+    var menuBarClimateEnabled: Bool {
+        get { defaults.bool(forKey: homeKey(Keys.menuBarClimateEnabled)) }
+        set {
+            defaults.set(newValue, forKey: homeKey(Keys.menuBarClimateEnabled))
+            postNotification()
+        }
+    }
+
+    var menuBarTemperatureSensorId: String? {
+        get { defaults.string(forKey: homeKey(Keys.menuBarTemperatureSensorId)) }
+        set {
+            defaults.set(newValue, forKey: homeKey(Keys.menuBarTemperatureSensorId))
+            postNotification()
+        }
+    }
+
+    var menuBarHumiditySensorId: String? {
+        get { defaults.string(forKey: homeKey(Keys.menuBarHumiditySensorId)) }
+        set {
+            defaults.set(newValue, forKey: homeKey(Keys.menuBarHumiditySensorId))
             postNotification()
         }
     }

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Combined menu bar temperature and humidity – select two sensors in Settings → Advanced to display their live readings beside the main icon. Follows the temperature unit preference, saves selections per home, and shows placeholders when readings are unavailable.
+
 ## 3.3.0
 
 - Fix HomeKit Secure Video cameras staying active after the camera panel closed – closing the panel from a camera's full view restarted the 30-second snapshot timer, so every camera kept capturing snapshots in the background (pulsing, "someone else is viewing" on iPhone) until the panel was next closed from the grid. The timer now only runs while the panel is visible. Deferred stream restarts (the sleepy-doorbell retry, restarts queued behind a stop) no longer cancel the post-close shutdown, a stream that finishes connecting after its camera was released is now stopped instead of left running, and a doorbell ring with the panel hidden no longer starts a stream the panel may never show (#177, thanks @martpolak)

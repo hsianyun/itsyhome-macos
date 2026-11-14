@@ -13,6 +13,10 @@ class AdvancedSection: SettingsCard {
     private let temperaturePopUp = NSPopUpButton()
     private let simpleLightSwitch = NSSwitch()
     private let sensorSummarySwitch = NSSwitch()
+    private let menuBarClimateSwitch = NSSwitch()
+    private let menuBarTemperaturePopUp = NSPopUpButton()
+    private let menuBarHumidityPopUp = NSPopUpButton()
+    private var menuData: MenuData?
     private let autoGroupsSwitch = NSSwitch()
     private let historySwitch = NSSwitch()
     private let historyProBadge = AdvancedSection.createProChip()
@@ -27,6 +31,11 @@ class AdvancedSection: SettingsCard {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(with data: MenuData) {
+        menuData = data
+        loadMenuBarClimatePreferences()
     }
 
     private func setupContent() {
@@ -45,6 +54,40 @@ class AdvancedSection: SettingsCard {
         addContentToBox(tempBox, content: tempRow, verticalInset: 4)
         stackView.addArrangedSubview(tempBox)
         tempBox.widthAnchor.constraint(equalTo: stackView.widthAnchor).isActive = true
+
+        // Combined readings beside the main menu bar icon.
+        let climateBox = createCardBox()
+        let climateStack = NSStackView()
+        climateStack.orientation = .vertical
+        climateStack.spacing = 0
+        climateStack.alignment = .leading
+        climateStack.translatesAutoresizingMaskIntoConstraints = false
+        menuBarClimateSwitch.controlSize = .mini
+        menuBarClimateSwitch.target = self
+        menuBarClimateSwitch.action = #selector(menuBarClimateChanged(_:))
+        let climateRow = createSettingRow(
+            label: String(localized: "settings.advanced.menu_bar_climate", defaultValue: "Temperature and humidity in menu bar", bundle: .macOSBridge),
+            subtitle: String(localized: "settings.advanced.menu_bar_climate_subtitle", defaultValue: "Show selected sensors beside the main icon. Missing readings appear as --.", bundle: .macOSBridge),
+            control: menuBarClimateSwitch
+        )
+        climateStack.addArrangedSubview(climateRow)
+        climateRow.widthAnchor.constraint(equalTo: climateStack.widthAnchor).isActive = true
+        for (popUp, label, action) in [
+            (menuBarTemperaturePopUp, String(localized: "settings.advanced.menu_bar_temperature", defaultValue: "Temperature sensor", bundle: .macOSBridge), #selector(menuBarTemperatureChanged(_:))),
+            (menuBarHumidityPopUp, String(localized: "settings.advanced.menu_bar_humidity", defaultValue: "Humidity sensor", bundle: .macOSBridge), #selector(menuBarHumidityChanged(_:)))
+        ] {
+            popUp.controlSize = .small
+            popUp.target = self
+            popUp.action = action
+            popUp.widthAnchor.constraint(equalToConstant: 250).isActive = true
+            popUp.cell?.lineBreakMode = .byTruncatingTail
+            let row = createSettingRow(label: label, control: popUp)
+            climateStack.addArrangedSubview(row)
+            row.widthAnchor.constraint(equalTo: climateStack.widthAnchor).isActive = true
+        }
+        addContentToBox(climateBox, content: climateStack, verticalInset: 4)
+        stackView.addArrangedSubview(climateBox)
+        climateBox.widthAnchor.constraint(equalTo: stackView.widthAnchor).isActive = true
 
         // Simple light controls box
         let lightBox = createCardBox()
@@ -225,9 +268,51 @@ class AdvancedSection: SettingsCard {
         // users so it can't look functional while the store refuses to record.
         historySwitch.isEnabled = ProStatusCache.shared.isPro
         historyProBadge.isHidden = ProStatusCache.shared.isPro
+        loadMenuBarClimatePreferences()
+    }
+
+    private func loadMenuBarClimatePreferences() {
+        let preferences = PreferencesManager.shared
+        menuBarClimateSwitch.state = preferences.menuBarClimateEnabled ? .on : .off
+        menuBarClimateSwitch.isEnabled = menuData != nil
+        configureSensorPopUp(menuBarTemperaturePopUp, reading: .temperature, selectedId: preferences.menuBarTemperatureSensorId)
+        configureSensorPopUp(menuBarHumidityPopUp, reading: .humidity, selectedId: preferences.menuBarHumiditySensorId)
+    }
+
+    private func configureSensorPopUp(_ popUp: NSPopUpButton, reading: MenuBarClimateDisplay.Reading, selectedId: String?) {
+        popUp.removeAllItems()
+        popUp.addItem(withTitle: String(localized: "settings.advanced.menu_bar_sensor_none", defaultValue: "None", bundle: .macOSBridge))
+        if let menuData {
+            for source in MenuBarClimateDisplay.sources(in: menuData, reading: reading) {
+                // Explicit menu items allow duplicate sensor names.
+                let item = NSMenuItem(title: source.title, action: nil, keyEquivalent: "")
+                item.representedObject = source.serviceId
+                popUp.menu?.addItem(item)
+            }
+        }
+        if let selectedId {
+            if let item = popUp.itemArray.first(where: { $0.representedObject as? String == selectedId }) {
+                popUp.select(item)
+            } else {
+                let item = NSMenuItem(
+                    title: String(localized: "settings.advanced.menu_bar_sensor_unavailable", defaultValue: "Unavailable sensor", bundle: .macOSBridge),
+                    action: nil, keyEquivalent: ""
+                )
+                item.representedObject = selectedId
+                popUp.menu?.addItem(item)
+                popUp.select(item)
+            }
+        } else {
+            popUp.selectItem(at: 0)
+        }
+        popUp.isEnabled = menuData != nil && PreferencesManager.shared.menuBarClimateEnabled
     }
 
     private func setupBindings() {
+        NotificationCenter.default.publisher(for: PreferencesManager.preferencesChangedNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.loadMenuBarClimatePreferences() }
+            .store(in: &cancellables)
         // The section is cached for the window's lifetime, so the Pro gate
         // must track purchases made after this pane was first shown.
         ProStatusCache.effectiveStatus(on: ProManager.shared.$isPro)
@@ -241,6 +326,18 @@ class AdvancedSection: SettingsCard {
     @objc private func temperatureUnitChanged(_ sender: NSPopUpButton) {
         let values = ["system", "celsius", "fahrenheit"]
         PreferencesManager.shared.temperatureUnit = values[sender.indexOfSelectedItem]
+    }
+
+    @objc private func menuBarClimateChanged(_ sender: NSSwitch) {
+        PreferencesManager.shared.menuBarClimateEnabled = sender.state == .on
+    }
+
+    @objc private func menuBarTemperatureChanged(_ sender: NSPopUpButton) {
+        PreferencesManager.shared.menuBarTemperatureSensorId = sender.selectedItem?.representedObject as? String
+    }
+
+    @objc private func menuBarHumidityChanged(_ sender: NSPopUpButton) {
+        PreferencesManager.shared.menuBarHumiditySensorId = sender.selectedItem?.representedObject as? String
     }
 
     @objc private func simpleLightSwitchChanged(_ sender: NSSwitch) {

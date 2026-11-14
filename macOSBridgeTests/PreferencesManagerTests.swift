@@ -27,7 +27,7 @@ final class PreferencesManagerTests: XCTestCase {
             "hiddenRoomIds", "hiddenCameraIds", "cameraOrder",
             "cameraOverlayAccessories", "deviceGroups", "shortcuts",
             "roomOrder", "sceneOrder", "globalGroupOrder", "groupOrderByRoom",
-            "favouriteGroupIds"
+            "favouriteGroupIds", "menuBarClimateEnabled", "menuBarTemperatureSensorId", "menuBarHumiditySensorId"
         ]
         for suffix in keySuffixes {
             defaults.removeObject(forKey: "\(suffix)_\(testHomeId)")
@@ -41,6 +41,29 @@ final class PreferencesManagerTests: XCTestCase {
     }
 
     // MARK: - Cameras enabled (global)
+
+    func testMenuBarClimateSelectionsArePerHomeAndCanBeCleared() {
+        XCTAssertFalse(prefs.menuBarClimateEnabled)
+        XCTAssertNil(prefs.menuBarTemperatureSensorId)
+        XCTAssertNil(prefs.menuBarHumiditySensorId)
+        prefs.menuBarClimateEnabled = true
+        prefs.menuBarTemperatureSensorId = "temperature"
+        prefs.menuBarHumiditySensorId = "humidity"
+
+        prefs.currentHomeId = "other-\(testHomeId)"
+        XCTAssertFalse(prefs.menuBarClimateEnabled)
+        XCTAssertNil(prefs.menuBarTemperatureSensorId)
+        XCTAssertNil(prefs.menuBarHumiditySensorId)
+
+        prefs.currentHomeId = testHomeId
+        XCTAssertTrue(prefs.menuBarClimateEnabled)
+        XCTAssertEqual(prefs.menuBarTemperatureSensorId, "temperature")
+        XCTAssertEqual(prefs.menuBarHumiditySensorId, "humidity")
+        prefs.menuBarTemperatureSensorId = nil
+        prefs.menuBarHumiditySensorId = nil
+        XCTAssertNil(prefs.menuBarTemperatureSensorId)
+        XCTAssertNil(prefs.menuBarHumiditySensorId)
+    }
 
     func testCamerasEnabledDefaultsFalse() {
         XCTAssertFalse(prefs.camerasEnabled)
