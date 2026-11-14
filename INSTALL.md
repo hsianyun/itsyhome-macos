@@ -84,6 +84,8 @@ The app starts in Home Assistant mode and opens the connection settings when cre
 
 Enter credentials again even if the original Itsyhome app is already configured: this version deliberately uses a separate credential entry. Tokens stay in Keychain. Keep iCloud-dependent features and Apple Home control in the original full build.
 
+Build **33002** fixes the older local build's "Home Assistant is not configured" error after entering credentials. Quit the old app, replace it with the updated build, reopen it and enter your URL and token again. If macOS asks to allow this app access to its login Keychain entry, allow access. The local build uses the encrypted login Keychain through its native plugin, without adding provisioning entitlements or saving tokens in preferences. Storage failures now show their actual Keychain error.
+
 ## 5. Enable the combined readings
 
 1. Open **Settings → Advanced**.
@@ -100,6 +102,8 @@ If a sensor is absent, check that its Home Assistant entity is enabled and has `
 ## Build using GitHub Actions
 
 The **Home Assistant local build** workflow builds this variant on a Mac runner, runs tests and uploads the **Itsyhome-HA** artifact containing `Itsyhome-HA.zip` after a successful run. It also supports **Run workflow** from the repository's **Actions** tab.
+
+Before packaging, the workflow also runs `scripts/test-ha-credentials.sh`. This launches a locally signed, sandboxed Catalyst test app and verifies saving, reopening, replacing and deleting a synthetic token through the native Keychain provider. The test uses a unique Keychain entry and removes it; it does not use real Home Assistant credentials.
 
 Forks may have Actions disabled initially. If the workflow does not run, enable workflows in the repository's Actions tab first. A workflow artifact exists only after the Mac build and tests succeed. A downloaded artifact is still locally signed rather than notarized; building on your own Mac is the recommended local installation method.
 

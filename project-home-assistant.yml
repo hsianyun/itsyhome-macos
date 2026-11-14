@@ -28,6 +28,7 @@ targets:
         # Override XcodeGen's application_iOS iPhone Developer preset.
         CODE_SIGN_IDENTITY: "-"
         PRODUCT_NAME: Itsyhome HA
+        CURRENT_PROJECT_VERSION: "33002"
         INFOPLIST_KEY_CFBundleDisplayName: Itsyhome HA
         CODE_SIGN_ENTITLEMENTS: Itsyhome/HomeAssistantOnly.entitlements
     # Replace the entire map: an additive merge would retain HomeKit/iCloud.
@@ -48,3 +49,52 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha.macOSBridgeTests
         CODE_SIGN_IDENTITY: "-"
+
+  HAKeychainProbeBridge:
+    type: bundle
+    platform: macOS
+    sources:
+      - Itsyhome/Shared/HATokenStore.swift
+      - Itsyhome/HomeAssistant/HATokenStores.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha.keychain-probe.bridge
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_IDENTITY: "-"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+    info:
+      path: work/HAKeychainProbeBridge/Info.plist
+      properties:
+        NSPrincipalClass: $(PRODUCT_MODULE_NAME).HALoginKeychainTokenStore
+
+  HAKeychainProbe:
+    type: application
+    platform: iOS
+    supportedDestinations: [iOS, maccatalyst]
+    sources:
+      - tools/HAKeychainProbe
+      - Itsyhome/Shared/HATokenStore.swift
+      - Itsyhome/HomeAssistant/HATokenStores.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha.keychain-probe
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_ENTITLEMENTS: Itsyhome/HomeAssistantOnly.entitlements
+        DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
+        TARGETED_DEVICE_FAMILY: "6"
+    info:
+      path: work/HAKeychainProbe/Info.plist
+      properties:
+        LSUIElement: true
+        UILaunchScreen: {}
+    scheme: {}
+    dependencies:
+      - target: HAKeychainProbeBridge
+        platformFilter: maccatalyst
+        embed: true
+        codeSign: true
+        copyPhase:
+          destination: plugins

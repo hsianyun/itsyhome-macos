@@ -78,12 +78,11 @@ class HAConnectWindowController: NSWindowController {
 
         connectView.setConnecting(true)
 
-        // Save credentials temporarily and validate
-        HAAuthManager.shared.saveCredentials(serverURL: url, accessToken: accessToken)
-
         Task {
             do {
-                let counts = try await HAAuthManager.shared.validateAndFetchCounts()
+                let token = accessToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                let counts = try await HAAuthManager.shared.validateAndFetchCounts(serverURL: url, accessToken: token)
+                try HAAuthManager.shared.saveCredentials(serverURL: url, accessToken: token)
                 await MainActor.run {
                     self.connectView.setConnecting(false)
                     self.window?.close()
@@ -96,7 +95,6 @@ class HAConnectWindowController: NSWindowController {
                 }
             } catch {
                 await MainActor.run {
-                    HAAuthManager.shared.clearCredentials()
                     self.connectView.setConnecting(false)
                     self.connectView.showError(error.localizedDescription)
                 }

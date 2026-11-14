@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix Home Assistant local-build connections reporting "Home Assistant is not configured" after entering a URL and token – the ad-hoc Catalyst host cannot use the provisioned data-protection Keychain. The local build now shares a native encrypted login-Keychain provider with its Catalyst code, reports persistence errors, and validates submitted credentials before saving. Build 33002 includes unit coverage and a signed Catalyst credential round-trip check before packaging.
+
 - Home Assistant-only local build – generate Itsyhome HA with `project-home-assistant.yml` or `scripts/build-home-assistant.sh`. Uses local signing without HomeKit/iCloud entitlements, starts directly in Home Assistant mode, disables cloud sync, and keeps its settings and credentials separate from the original app. Includes a Mac build/test workflow that packages the app as a ZIP.
 
 - Combined menu bar temperature and humidity – select two sensors in Settings → Advanced to display their live readings beside the main icon. Follows the temperature unit preference, saves selections per home, and shows placeholders when readings are unavailable.

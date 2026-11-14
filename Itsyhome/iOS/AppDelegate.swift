@@ -79,6 +79,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         macOSController = pluginClass.init()
+        if BuildFeatures.isHomeAssistantOnly,
+           let store = macOSController?.homeAssistantTokenStore?() {
+            HAAuthManager.shared.useTokenStore(store)
+        }
         startupLog.info("[iOS] MacOSController instantiated")
 
         // Connect HomeKit if available

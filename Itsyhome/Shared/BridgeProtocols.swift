@@ -576,6 +576,7 @@ public protocol Mac2iOS: NSObjectProtocol {
 public protocol iOS2Mac: NSObjectProtocol {
     init()
     var iOSBridge: Mac2iOS? { get set }
+    @objc optional func homeAssistantTokenStore() -> HATokenStore
 
     func reloadMenuWithJSON(_ jsonString: String)
     func updateCharacteristic(identifier: UUID, value: Any)

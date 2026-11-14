@@ -11,7 +11,20 @@ permissions:
   contents: read
 
 jobs:
+  credentials:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 16.4
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Verify credentials in a locally signed Catalyst app
+        run: ./scripts/test-ha-credentials.sh
+
   build:
+    needs: credentials
     runs-on: macos-15
     timeout-minutes: 45
     steps:

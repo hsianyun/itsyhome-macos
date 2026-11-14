@@ -70,6 +70,10 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
 
     @objc public weak var iOSBridge: Mac2iOS?
 
+    @objc public func homeAssistantTokenStore() -> HATokenStore {
+        HAAuthManager.shared.tokenStore
+    }
+
     /// Returns the appropriate bridge based on the selected platform
     var activeBridge: Mac2iOS? {
         if PlatformManager.shared.selectedPlatform == .homeAssistant {
