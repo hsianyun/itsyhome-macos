@@ -24,6 +24,9 @@ public protocol SmartHomePlatformDelegate: AnyObject {
     /// Called when a single characteristic value changes
     func platformDidUpdateCharacteristic(_ platform: SmartHomePlatform, identifier: UUID, value: Any)
 
+    /// A reading became unknown or unavailable; discard its displayed value.
+    func platformDidInvalidateCharacteristic(_ platform: SmartHomePlatform, identifier: UUID)
+
     /// Called when an accessory's reachability changes
     func platformDidUpdateReachability(_ platform: SmartHomePlatform, accessoryIdentifier: UUID, isReachable: Bool)
 
@@ -38,6 +41,10 @@ public protocol SmartHomePlatformDelegate: AnyObject {
 
     /// Called when a camera's built-in motion sensor detects motion
     func platformDidReceiveMotionEvent(_ platform: SmartHomePlatform, cameraIdentifier: UUID)
+}
+
+public extension SmartHomePlatformDelegate {
+    func platformDidInvalidateCharacteristic(_ platform: SmartHomePlatform, identifier: UUID) {}
 }
 
 // MARK: - Camera stream info

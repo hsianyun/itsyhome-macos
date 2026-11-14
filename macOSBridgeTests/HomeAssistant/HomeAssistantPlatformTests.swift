@@ -105,6 +105,42 @@ final class HomeAssistantPlatformTests: XCTestCase {
 
     // MARK: - Delegate tests
 
+    func testSensorUnavailableInvalidatesReadingAndRecovers() throws {
+        let platform = HomeAssistantPlatform()
+        let delegate = MockPlatformDelegate()
+        platform.delegate = delegate
+        let client = try HomeAssistantClient(serverURL: URL(string: "http://localhost:8123")!, accessToken: "test")
+
+        for deviceClass in ["temperature", "humidity"] {
+            let entityId = "sensor.\(deviceClass)"
+            let characteristic = platform.mapper.characteristicUUID(entityId, deviceClass == "temperature" ? "current_temp" : "humidity")
+            let initial = try XCTUnwrap(HAEntityState(json: [
+                "entity_id": entityId, "state": "21.5", "attributes": ["device_class": deviceClass]
+            ]))
+            platform.mapper.loadData(states: [initial], entities: [], devices: [], areas: [])
+            for state in ["21.5", "unavailable", "unknown", "22.5"] {
+                let newState = try XCTUnwrap(HAEntityState(json: [
+                    "entity_id": entityId, "state": state, "attributes": ["device_class": deviceClass]
+                ]))
+                platform.client(client, didReceiveStateChange: entityId, newState: newState, oldState: nil)
+                if state == "unavailable" || state == "unknown" {
+                    XCTAssertEqual(delegate.invalidatedCharacteristics.last, characteristic)
+                    XCTAssertNil(platform.getCharacteristicValue(identifier: characteristic))
+                } else {
+                    XCTAssertNotNil(platform.getCharacteristicValue(identifier: characteristic))
+                }
+            }
+            let removal = try XCTUnwrap(HAEvent(json: ["event_type": "state_changed", "data": [
+                "entity_id": entityId, "new_state": NSNull(),
+                "old_state": ["entity_id": entityId, "state": "22.5", "attributes": ["device_class": deviceClass]]
+            ]]))
+            platform.client(client, didReceiveEvent: removal)
+            XCTAssertNil(platform.getCharacteristicValue(identifier: characteristic))
+            XCTAssertEqual(delegate.invalidatedCharacteristics.last, characteristic)
+        }
+        XCTAssertEqual(delegate.invalidatedCharacteristics.count, 6)
+    }
+
     func testDelegateCanBeSet() {
         let platform = HomeAssistantPlatform()
         let delegate = MockPlatformDelegate()
@@ -145,6 +181,12 @@ final class HomeAssistantPlatformTests: XCTestCase {
 // MARK: - Mock Delegate
 
 private class MockPlatformDelegate: SmartHomePlatformDelegate {
+
+    var invalidatedCharacteristics: [UUID] = []
+
+    func platformDidInvalidateCharacteristic(_ platform: SmartHomePlatform, identifier: UUID) {
+        invalidatedCharacteristics.append(identifier)
+    }
 
     var didUpdateMenuDataCalled = false
     var didUpdateCharacteristicCalled = false

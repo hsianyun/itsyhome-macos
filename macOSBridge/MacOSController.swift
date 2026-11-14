@@ -32,6 +32,8 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
     var menuBuilder: MenuBuilder!
     var actionEngine: ActionEngine!
     var currentMenuData: MenuData?
+    var menuBarTemperatureSource: MenuBarClimateDisplay.Source?
+    var menuBarHumiditySource: MenuBarClimateDisplay.Source?
     var menuIsOpen = false
     var needsRebuild = false
 
@@ -504,6 +506,12 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
         updateCharacteristic(identifier: identifier, value: value)
     }
 
+    public func platformDidInvalidateCharacteristic(_ platform: SmartHomePlatform, identifier: UUID) {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateMenuBarClimateDisplay(for: identifier)
+        }
+    }
+
     public func platformDidUpdateReachability(_ platform: SmartHomePlatform, accessoryIdentifier: UUID, isReachable: Bool) {
         setReachability(accessoryIdentifier: accessoryIdentifier, isReachable: isReachable)
     }
@@ -525,6 +533,7 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
         // Reset menu to loading state without showing a popup
         DispatchQueue.main.async { [weak self] in
             self?.currentMenuData = nil
+            self?.refreshMenuBarClimateSources()
             self?.setupMenu()  // This will show "Loading Home Assistant..."
         }
     }
@@ -589,6 +598,7 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
     }
 
     @objc private func preferencesDidChange() {
+        refreshMenuBarClimateSources()
         // Update network auto-switch monitoring (Pro only)
         if ProStatusCache.shared.isPro && PreferencesManager.shared.networkAutoSwitchEnabled {
             NetworkLocationManager.shared.delegate = self
@@ -634,6 +644,7 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
     private func setupStatusItem() {
         statusItem.autosaveName = "com.itsyhome.main"
         updateStatusItemIcon()
+        updateMenuBarClimateDisplay()
         statusItem.menu = mainMenu
         mainMenu.delegate = self
     }
@@ -870,6 +881,8 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
 
         PreferencesManager.shared.currentHomeId = data.selectedHomeId
         PreferencesManager.shared.currentHomeName = data.homes.first(where: { $0.uniqueIdentifier == data.selectedHomeId })?.name
+        refreshMenuBarClimateSources()
+        NotificationCenter.default.post(name: SettingsView.menuDataChangedNotification, object: data)
         CloudSyncManager.shared.updateMenuData(data)
         HotkeyManager.shared.registerShortcuts()
 

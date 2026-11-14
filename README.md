@@ -13,6 +13,8 @@ A native macOS menu bar app for controlling your HomeKit and Home Assistant smar
 
 **[itsyhome.app](https://itsyhome.app)**
 
+**Installing this fork:** see [the Mac installation guide](INSTALL.md) to build, install and enable the combined temperature and humidity display.
+
 ### Also available on iOS and tvOS
 
 <table>
@@ -29,6 +31,7 @@ A native macOS menu bar app for controlling your HomeKit and Home Assistant smar
 ## Features
 
 - **Menu bar access** - Control your smart home from the macOS menu bar
+- **Menu bar temperature and humidity** - Show two selected sensors together beside the main icon, with live readings and Celsius/Fahrenheit support
 - **HomeKit support** - Full integration with Apple HomeKit devices and scenes
 - **Home Assistant support** - Connect to your Home Assistant server via WebSocket API
 - **Device groups** - Create custom groups to control multiple devices at once
@@ -101,6 +104,12 @@ Connects via WebSocket API for real-time updates. On first launch, choose your p
 - Entities are automatically grouped by device and area
 - Cameras require the `stream` integration for live video
 - Scene state tracking requires scenes created in the Home Assistant UI (not YAML)
+
+### Temperature and humidity beside the main icon
+
+In **Settings → Advanced**, enable **Temperature and humidity in menu bar**, then choose a **Temperature sensor** and a **Humidity sensor**. The main menu bar item shows, for example, `21.5°C · 45%`; clicking it still opens the usual Home menu. Sensors remain selectable when **Summarise temperature and humidity** is enabled.
+
+The display follows **Temperature units** in the same settings pane. Selections are saved per home and update through the existing sensor subscription, with no extra polling. Missing, unknown or unavailable readings appear as `--°C` / `--°F` and `--%`. Turn the switch off to restore the icon-only menu bar item.
 
 ## Itsyhome Pro
 

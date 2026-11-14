@@ -63,11 +63,12 @@ final class EntityMapper {
     }
 
     /// Convert a temperature from HA's unit to Celsius for internal storage
-    private func normalizeTemperature(_ value: Double) -> Double {
-        if haTemperatureUnit == "°F" {
-            return (value - 32.0) * 5.0 / 9.0
+    private func normalizeTemperature(_ value: Double, unit: String? = nil) -> Double {
+        switch unit ?? haTemperatureUnit {
+        case "°F": return (value - 32.0) * 5.0 / 9.0
+        case "K": return value - 273.15
+        default: return value
         }
-        return value
     }
 
     /// Convert a temperature step from HA's unit to Celsius. A step is a
@@ -467,7 +468,7 @@ final class EntityMapper {
             colorTemperatureMin: state.maxColorTempKelvin.flatMap { Double(1_000_000 / $0) },
             colorTemperatureMax: state.minColorTempKelvin.flatMap { Double(1_000_000 / $0) },
             // Climate characteristics
-            currentTemperatureId: (state.currentTemperature != nil || (state.domain == "sensor" && state.deviceClass == "temperature" && state.numericState != nil)) ? characteristicUUID(state.entityId, "current_temp") : nil,
+            currentTemperatureId: (state.currentTemperature != nil || (state.domain == "sensor" && state.deviceClass == "temperature")) ? characteristicUUID(state.entityId, "current_temp") : nil,
             targetTemperatureId: state.targetTemperature != nil ? characteristicUUID(state.entityId, "target_temp") : nil,
             targetTemperatureStep: climateStep,
             targetTemperatureMin: climateMin,
@@ -768,7 +769,7 @@ final class EntityMapper {
         // numeric sensor (CO2, power, lux, ...) feeds the generic reading.
         if state.domain == "sensor" {
             if state.deviceClass == "temperature", let temp = state.numericState {
-                values[characteristicUUID(entityId, "current_temp")] = normalizeTemperature(temp)
+                values[characteristicUUID(entityId, "current_temp")] = normalizeTemperature(temp, unit: state.unitOfMeasurement)
             } else if state.deviceClass == "humidity", let humidity = state.numericState {
                 values[characteristicUUID(entityId, "humidity")] = humidity
             } else if let numeric = state.numericState {

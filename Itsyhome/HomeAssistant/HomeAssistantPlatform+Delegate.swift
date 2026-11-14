@@ -28,6 +28,22 @@ extension HomeAssistantPlatform: HomeAssistantClientDelegate {
         // Update mapper
         mapper.updateState(newState)
 
+        // Non-numeric sensor states produce no characteristic value. Notify the
+        // status display explicitly so it does not retain the last good reading.
+        if newState.domain == "sensor", newState.numericState?.isFinite != true {
+            let characteristic: String?
+            switch newState.deviceClass ?? oldState?.deviceClass {
+            case "temperature": characteristic = "current_temp"
+            case "humidity": characteristic = "humidity"
+            default: characteristic = nil
+            }
+            if let characteristic {
+                delegate?.platformDidInvalidateCharacteristic(
+                    self, identifier: mapper.characteristicUUID(entityId, characteristic)
+                )
+            }
+        }
+
         // Clear pending color writes now that HA has confirmed
         if newState.domain == "light" {
             pendingColorLock.withLock {
@@ -58,7 +74,16 @@ extension HomeAssistantPlatform: HomeAssistantClientDelegate {
     }
 
     func client(_ client: HomeAssistantClient, didReceiveEvent event: HAEvent) {
-        // Handle other event types if needed
+        // HA removes an entity with new_state: null, which has no numeric
+        // update. Keep a selected sensor unavailable until the next full reload.
+        guard event.eventType == "state_changed", event.data["new_state"] is NSNull,
+              let oldJSON = event.data["old_state"] as? [String: Any],
+              let oldState = HAEntityState(json: oldJSON), oldState.domain == "sensor",
+              oldState.deviceClass == "temperature" || oldState.deviceClass == "humidity",
+              let unavailable = HAEntityState(json: [
+                "entity_id": oldState.entityId, "state": "unavailable", "attributes": oldState.attributes
+              ]) else { return }
+        self.client(client, didReceiveStateChange: oldState.entityId, newState: unavailable, oldState: oldState)
     }
 
     func client(_ client: HomeAssistantClient, didEncounterError error: Error) {

@@ -58,6 +58,7 @@ class SidebarRowView: NSTableRowView {
 class SettingsView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
     static let navigateToSectionNotification = Notification.Name("SettingsNavigateToSection")
+    static let menuDataChangedNotification = Notification.Name("SettingsMenuDataChanged")
 
     private let sidebarTableView = NSTableView()
     private let contentContainer = NSScrollView()
@@ -174,6 +175,7 @@ class SettingsView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         camerasSection?.configure(with: data)
         networksSection?.configure(with: data)
         homeKitBridgeSection?.configure(with: data)
+        advancedSection?.configure(with: data)
     }
 
     override func viewDidMoveToWindow() {
@@ -241,6 +243,15 @@ class SettingsView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         ])
 
         showSection(.general)
+
+        NotificationCenter.default.publisher(for: Self.menuDataChangedNotification)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] notification in
+                if let data = notification.object as? MenuData {
+                    self?.configure(with: data)
+                }
+            }
+            .store(in: &cancellables)
 
         // Listen for section navigation requests
         NotificationCenter.default.addObserver(
@@ -332,6 +343,9 @@ class SettingsView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         case .advanced:
             if advancedSection == nil {
                 advancedSection = AdvancedSection()
+            }
+            if let data = menuData {
+                advancedSection?.configure(with: data)
             }
             contentView = advancedSection!
 

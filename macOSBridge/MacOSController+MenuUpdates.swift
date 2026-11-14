@@ -17,6 +17,7 @@ extension MacOSController {
         // dropdown is open: the engine evaluates state-duration triggers (e.g.
         // "door open for 15 min") continuously, not just while the menu is open.
         updatePinnedStatusItems(for: characteristicId, value: value)
+        updateMenuBarClimateDisplay(for: characteristicId)
         WebhookServer.shared.publishCharacteristicChange(characteristicId: characteristicId, value: value)
         AutomationEngine.shared.handleCharacteristicChange(id: characteristicId, value: value)
 

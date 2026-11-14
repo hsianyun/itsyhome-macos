@@ -48,6 +48,32 @@ final class EntityMapperTests: XCTestCase {
 
     // MARK: - Light mapping tests
 
+    func testTemperatureSensorsRespectTheirOwnUnits() throws {
+        mapper.setTemperatureUnit("°F")
+        for (unit, reading) in [("°C", "20"), ("°F", "68"), ("K", "293.15")] {
+            let entityId = "sensor.temperature"
+            loadData(states: [createEntityState(entityId: entityId, state: reading, attributes: [
+                "device_class": "temperature", "unit_of_measurement": unit
+            ])])
+            let value = try XCTUnwrap(mapper.getCharacteristicValues(for: entityId)[mapper.characteristicUUID(entityId, "current_temp")] as? Double)
+            XCTAssertEqual(value, 20, accuracy: 0.001)
+        }
+    }
+
+    func testUnavailableTemperatureSensorKeepsStableCharacteristicAcrossRecovery() throws {
+        let entityId = "sensor.bedroom_temperature"
+        loadData(states: [createEntityState(entityId: entityId, state: "unavailable", attributes: ["device_class": "temperature"])])
+        let initial = try XCTUnwrap(mapper.generateMenuData().accessories.flatMap(\.services).first)
+        let characteristic = try XCTUnwrap(initial.currentTemperatureId)
+        XCTAssertTrue(mapper.getCharacteristicValues(for: entityId).isEmpty)
+
+        mapper.updateState(createEntityState(entityId: entityId, state: "21.5", attributes: ["device_class": "temperature"]))
+        let recovered = try XCTUnwrap(mapper.generateMenuData().accessories.flatMap(\.services).first)
+        XCTAssertEqual(recovered.uniqueIdentifier, initial.uniqueIdentifier)
+        XCTAssertEqual(recovered.currentTemperatureId, characteristic)
+        XCTAssertEqual(mapper.getCharacteristicValues(for: entityId)[UUID(uuidString: characteristic)!] as? Double, 21.5)
+    }
+
     func testLightMapsToLightbulbServiceType() {
         let state = createEntityState(
             entityId: "light.kitchen",
