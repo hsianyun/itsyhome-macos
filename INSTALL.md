@@ -88,6 +88,8 @@ Build **33002** fixes the older local build's "Home Assistant is not configured"
 
 ## 5. Enable the combined readings
 
+Build **33003** fixes Home list expansion, visibility-button clicks and scrolling/selection in the Advanced sensor-source menus. Quit the old app and replace it with this build. Existing settings and credentials are retained; allow login-Keychain access if prompted after the update. Home now lists individual sensors even when summary mode is enabled, so you can expand sensor-only rooms and manage each sensor's visibility.
+
 1. Open **Settings → Advanced**.
 2. Enable **Temperature and humidity in menu bar**.
 3. Choose a **Temperature sensor** and a **Humidity sensor**.

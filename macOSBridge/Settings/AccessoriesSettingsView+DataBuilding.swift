@@ -55,12 +55,9 @@ extension AccessoriesSettingsView {
         }
 
         let preferences = PreferencesManager.shared
-        // Temperature/humidity sensors are only rolled into the aggregate summary
-        // when it's enabled; with the summary off they are individual rows and
-        // must be manageable here like any other accessory.
-        let sensorTypes: Set<String> = preferences.sensorSummary
-            ? [ServiceTypes.temperatureSensor, ServiceTypes.humiditySensor]
-            : []
+        // Home manages individual entities even when the menu displays their
+        // readings as a summary. Otherwise sensor-only rooms cannot expand and
+        // their sensors have no visibility controls.
 
         servicesByRoom = [:]
         noRoomServices = []
@@ -68,10 +65,8 @@ extension AccessoriesSettingsView {
         for accessory in data.accessories {
             for service in accessory.services {
                 if let roomId = service.roomIdentifier {
-                    if !sensorTypes.contains(service.serviceType) {
-                        servicesByRoom[roomId, default: []].append(service)
-                    }
-                } else if !sensorTypes.contains(service.serviceType) {
+                    servicesByRoom[roomId, default: []].append(service)
+                } else {
                     noRoomServices.append(service)
                 }
             }

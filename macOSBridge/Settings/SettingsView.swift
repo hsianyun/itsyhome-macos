@@ -409,11 +409,13 @@ class SettingsView: NSView, NSTableViewDataSource, NSTableViewDelegate {
             contentView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 16),
             contentView.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor, constant: 20),
             contentView.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor, constant: -20),
-            contentView.bottomAnchor.constraint(lessThanOrEqualTo: wrapper.bottomAnchor)
+            // A complete height chain lets the scroll view follow expanding
+            // tables and keeps controls inside the document's hit-test bounds.
+            contentView.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor, constant: -20)
         ])
 
         contentContainer.documentView = wrapper
-        wrapper.widthAnchor.constraint(equalTo: contentContainer.widthAnchor).isActive = true
+        wrapper.widthAnchor.constraint(equalTo: contentContainer.contentView.widthAnchor).isActive = true
     }
 
     // MARK: - NSTableViewDataSource
