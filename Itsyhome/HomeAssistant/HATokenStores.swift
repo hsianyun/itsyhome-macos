@@ -88,16 +88,18 @@ final class HALoginKeychainTokenStore: NSObject, HATokenStore {
         let data = Data(token.utf8)
         if status == errSecSuccess, let item {
             return data.withUnsafeBytes { bytes in
-                SecKeychainItemModifyAttributesAndData(item, nil, UInt32(bytes.count), bytes.baseAddress)
+                guard let address = bytes.baseAddress else { return errSecParam }
+                return SecKeychainItemModifyAttributesAndData(item, nil, UInt32(bytes.count), address)
             }
         }
         guard status == errSecItemNotFound else { return status }
         return service.withCString { serviceBytes in
             account.withCString { accountBytes in
                 data.withUnsafeBytes { bytes in
-                    SecKeychainAddGenericPassword(nil, UInt32(service.utf8.count), serviceBytes,
+                    guard let address = bytes.baseAddress else { return errSecParam }
+                    return SecKeychainAddGenericPassword(nil, UInt32(service.utf8.count), serviceBytes,
                                                  UInt32(account.utf8.count), accountBytes,
-                                                 UInt32(bytes.count), bytes.baseAddress, nil)
+                                                 UInt32(bytes.count), address, nil)
                 }
             }
         }
