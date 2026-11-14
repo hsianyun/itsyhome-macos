@@ -18,6 +18,9 @@ settings:
 targets:
   Itsyhome:
     supportedDestinations:REPLACE:
+      # XcodeGen requires the iOS base platform for a Catalyst target.
+      # The build script explicitly selects the Mac Catalyst destination.
+      - iOS
       - maccatalyst
     settings:
       base:
