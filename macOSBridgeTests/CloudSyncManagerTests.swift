@@ -25,6 +25,18 @@ final class CloudSyncManagerTests: XCTestCase {
 
     // MARK: - Sync enabled tests
 
+    func testHomeAssistantOnlyBuildIgnoresPreviouslyEnabledCloudSync() throws {
+        try XCTSkipUnless(BuildFeatures.isHomeAssistantOnly, "Only the local Home Assistant build disables iCloud")
+        let previous = UserDefaults.standard.object(forKey: "cloudSyncEnabled")
+        defer { UserDefaults.standard.set(previous, forKey: "cloudSyncEnabled") }
+        UserDefaults.standard.set(true, forKey: "cloudSyncEnabled")
+        let manager = CloudSyncManager.shared
+        XCTAssertFalse(manager.isSyncEnabled)
+        manager.startListening()
+        manager.isSyncEnabled = true
+        XCTAssertFalse(manager.isSyncEnabled)
+    }
+
     func testSyncEnabledDefaultsToFalse() {
         XCTAssertFalse(CloudSyncManager.shared.isSyncEnabled)
     }
@@ -34,7 +46,7 @@ final class CloudSyncManagerTests: XCTestCase {
 
         // Enable sync
         manager.isSyncEnabled = true
-        XCTAssertTrue(manager.isSyncEnabled)
+        XCTAssertEqual(manager.isSyncEnabled, !BuildFeatures.isHomeAssistantOnly)
 
         // Disable sync
         manager.isSyncEnabled = false

@@ -20,7 +20,8 @@ final class HAAuthManager {
     // MARK: - Constants
 
     private let serverURLKey = "HomeAssistantServerURL"
-    private let keychainService = "com.nickustinov.itsyhome.homeassistant"
+    private let keychainService = BuildFeatures.isHomeAssistantOnly
+        ? "com.hsianyun.itsyhome.ha.homeassistant" : "com.nickustinov.itsyhome.homeassistant"
     private let keychainAccount = "access_token"
 
     // MARK: - Properties

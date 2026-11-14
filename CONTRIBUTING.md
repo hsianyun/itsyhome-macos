@@ -14,6 +14,14 @@ Thanks for your interest in contributing! Itsyhome is a native macOS menu bar ap
 
 ### Building
 
+For Home Assistant-only local development without a provisioning team, use:
+
+```bash
+./scripts/build-home-assistant.sh --test
+```
+
+This generates `ItsyhomeHomeAssistant.xcodeproj` using the overlay in `project-home-assistant.yml`. It keeps the shared sources, forces Home Assistant mode, disables iCloud sync, and signs the app locally with unrestricted sandbox/network entitlements. See [INSTALL.md](INSTALL.md). The original full-featured project below retains HomeKit and iCloud provisioning requirements.
+
 ```bash
 git clone https://github.com/nickustinov/itsyhome-macos.git
 cd itsyhome-macos

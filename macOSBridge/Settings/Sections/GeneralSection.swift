@@ -47,11 +47,13 @@ class GeneralSection: SettingsCard {
 
     private func setupContent() {
         // Platform picker box
-        let platformBox = createCardBox()
-        let platformContent = createPlatformPickerSection()
-        addContentToBox(platformBox, content: platformContent, verticalInset: 4)
-        stackView.addArrangedSubview(platformBox)
-        platformBox.widthAnchor.constraint(equalTo: stackView.widthAnchor).isActive = true
+        if !BuildFeatures.isHomeAssistantOnly {
+            let platformBox = createCardBox()
+            let platformContent = createPlatformPickerSection()
+            addContentToBox(platformBox, content: platformContent, verticalInset: 4)
+            stackView.addArrangedSubview(platformBox)
+            platformBox.widthAnchor.constraint(equalTo: stackView.widthAnchor).isActive = true
+        }
 
         // Launch at login box
         let launchBox = createCardBox()
@@ -64,14 +66,16 @@ class GeneralSection: SettingsCard {
         launchBox.widthAnchor.constraint(equalTo: stackView.widthAnchor).isActive = true
 
         // iCloud sync box
-        let syncBox = createCardBox()
-        syncSwitch.controlSize = .mini
-        syncSwitch.target = self
-        syncSwitch.action = #selector(syncSwitchChanged)
-        let syncRow = createSyncSettingRow()
-        addContentToBox(syncBox, content: syncRow, verticalInset: 4)
-        stackView.addArrangedSubview(syncBox)
-        syncBox.widthAnchor.constraint(equalTo: stackView.widthAnchor).isActive = true
+        if !BuildFeatures.isHomeAssistantOnly {
+            let syncBox = createCardBox()
+            syncSwitch.controlSize = .mini
+            syncSwitch.target = self
+            syncSwitch.action = #selector(syncSwitchChanged)
+            let syncRow = createSyncSettingRow()
+            addContentToBox(syncBox, content: syncRow, verticalInset: 4)
+            stackView.addArrangedSubview(syncBox)
+            syncBox.widthAnchor.constraint(equalTo: stackView.widthAnchor).isActive = true
+        }
 
     }
 
@@ -126,6 +130,7 @@ class GeneralSection: SettingsCard {
     }
 
     private func platformCardTapped(_ newPlatform: SelectedPlatform) {
+        guard !BuildFeatures.isHomeAssistantOnly else { return }
         let currentPlatform = PlatformManager.shared.selectedPlatform
 
         if newPlatform == currentPlatform {
@@ -349,14 +354,16 @@ class GeneralSection: SettingsCard {
     }
 
     private func createFeaturesGrid() -> NSView {
-        let features = [
+        var features = [
             String(localized: "settings.pro.feature_cameras", defaultValue: "Cameras", bundle: .macOSBridge),
             String(localized: "settings.pro.feature_groups", defaultValue: "Device groups", bundle: .macOSBridge),
             String(localized: "settings.pro.feature_deeplinks", defaultValue: "Deeplinks", bundle: .macOSBridge),
-            String(localized: "settings.pro.feature_sync", defaultValue: "iCloud sync", bundle: .macOSBridge),
             String(localized: "settings.pro.feature_stream_deck", defaultValue: "Stream Deck", bundle: .macOSBridge),
             String(localized: "settings.pro.feature_webhooks", defaultValue: "Webhooks/CLI", bundle: .macOSBridge)
         ]
+        if !BuildFeatures.isHomeAssistantOnly {
+            features.insert(String(localized: "settings.pro.feature_sync", defaultValue: "iCloud sync", bundle: .macOSBridge), at: 3)
+        }
 
         let grid = NSGridView(numberOfColumns: 3, rows: 0)
         grid.rowSpacing = 4
@@ -364,6 +371,7 @@ class GeneralSection: SettingsCard {
 
         for row in stride(from: 0, to: features.count, by: 3) {
             let cells: [NSView] = (0..<3).map { col in
+                guard row + col < features.count else { return NSView() }
                 let feature = features[row + col]
                 let cell = NSStackView()
                 cell.orientation = .horizontal
@@ -438,6 +446,7 @@ class GeneralSection: SettingsCard {
     }
 
     private func updateSyncUI() {
+        guard !BuildFeatures.isHomeAssistantOnly else { return }
         let isPro = ProStatusCache.shared.isPro
         let syncEnabled = CloudSyncManager.shared.isSyncEnabled
         syncSwitch.isEnabled = isPro

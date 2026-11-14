@@ -107,6 +107,10 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
     }
 
     private func showPlatformPicker() {
+        if BuildFeatures.isHomeAssistantOnly {
+            openSettingsToHomeAssistant()
+            return
+        }
         platformPickerController = PlatformPickerWindowController()
         platformPickerController?.delegate = self
         platformPickerController?.showWindow(nil)
@@ -115,6 +119,7 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
     // MARK: - PlatformPickerDelegate
 
     func platformPickerDidSelectHomeKit() {
+        guard !BuildFeatures.isHomeAssistantOnly else { return }
         StartupLogger.log("User selected HomeKit")
         PlatformManager.shared.selectHomeKit()
         platformPickerController = nil

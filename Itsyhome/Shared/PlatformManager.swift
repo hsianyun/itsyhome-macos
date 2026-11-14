@@ -36,31 +36,35 @@ public final class PlatformManager {
 
     private let selectedPlatformKey = "SelectedPlatform"
     private let hasCompletedOnboardingKey = "HasCompletedOnboarding"
+    private let defaults: UserDefaults
+    private let homeAssistantOnly: Bool
 
     // MARK: - Properties
 
     /// The currently selected platform
     public var selectedPlatform: SelectedPlatform {
         get {
-            guard let rawValue = UserDefaults.standard.string(forKey: selectedPlatformKey),
+            if homeAssistantOnly { return .homeAssistant }
+            guard let rawValue = defaults.string(forKey: selectedPlatformKey),
                   let platform = SelectedPlatform(rawValue: rawValue) else {
                 return .none
             }
             return platform
         }
         set {
-            UserDefaults.standard.set(newValue.rawValue, forKey: selectedPlatformKey)
-            logger.info("Platform set to: \(newValue.rawValue, privacy: .public)")
+            let platform = homeAssistantOnly ? .homeAssistant : newValue
+            defaults.set(platform.rawValue, forKey: selectedPlatformKey)
+            logger.info("Platform set to: \(platform.rawValue, privacy: .public)")
         }
     }
 
     /// Whether the user has completed onboarding (platform selection)
     public var hasCompletedOnboarding: Bool {
         get {
-            UserDefaults.standard.bool(forKey: hasCompletedOnboardingKey)
+            defaults.bool(forKey: hasCompletedOnboardingKey)
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: hasCompletedOnboardingKey)
+            defaults.set(newValue, forKey: hasCompletedOnboardingKey)
         }
     }
 
@@ -73,24 +77,29 @@ public final class PlatformManager {
             return true  // HomeKit is always "configured" once selected (permission handled separately)
         case .homeAssistant:
             // Check if HA server URL is configured (HAAuthManager stores this in UserDefaults)
-            return UserDefaults.standard.string(forKey: "HomeAssistantServerURL") != nil
+            return defaults.string(forKey: "HomeAssistantServerURL") != nil
         }
     }
 
     /// Whether the app needs to show onboarding
     public var needsOnboarding: Bool {
-        !hasCompletedOnboarding || selectedPlatform == .none
+        // The HA-only build opens connection settings directly, without a
+        // platform picker. Missing credentials are handled by MacOSController.
+        !homeAssistantOnly && (!hasCompletedOnboarding || selectedPlatform == .none)
     }
 
     // MARK: - Initialization
 
-    private init() {
+    init(defaults: UserDefaults = .standard, homeAssistantOnly: Bool = BuildFeatures.isHomeAssistantOnly) {
+        self.defaults = defaults
+        self.homeAssistantOnly = homeAssistantOnly
         migrateExistingUsersIfNeeded()
         logger.info("PlatformManager initialized, platform: \(self.selectedPlatform.rawValue, privacy: .public)")
     }
 
     /// Migrate existing users (upgrading from 1.x) to HomeKit automatically
     private func migrateExistingUsersIfNeeded() {
+        guard !homeAssistantOnly else { return }
         // If already set up, nothing to do
         if selectedPlatform != .none || hasCompletedOnboarding {
             return
@@ -105,7 +114,7 @@ public final class PlatformManager {
         ]
 
         let hasExistingData = existingUserIndicators.contains { key in
-            UserDefaults.standard.object(forKey: key) != nil
+            defaults.object(forKey: key) != nil
         }
 
         if hasExistingData {
@@ -119,6 +128,7 @@ public final class PlatformManager {
 
     /// Select HomeKit as the platform
     public func selectHomeKit() {
+        guard !homeAssistantOnly else { return }
         selectedPlatform = .homeKit
         hasCompletedOnboarding = true
         logger.info("HomeKit selected")
@@ -144,7 +154,7 @@ public final class PlatformManager {
 
     /// Clear Home Assistant credentials (called from code that has access to HAAuthManager)
     public func clearHomeAssistantCredentials() {
-        UserDefaults.standard.removeObject(forKey: "HomeAssistantServerURL")
+        defaults.removeObject(forKey: "HomeAssistantServerURL")
         // Token is in Keychain, cleared by HAAuthManager
     }
 }

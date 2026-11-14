@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Home Assistant-only local build – generate Itsyhome HA with `project-home-assistant.yml` or `scripts/build-home-assistant.sh`. Uses local signing without HomeKit/iCloud entitlements, starts directly in Home Assistant mode, disables cloud sync, and keeps its settings and credentials separate from the original app. Includes a Mac build/test workflow that packages the app as a ZIP.
+
 - Combined menu bar temperature and humidity – select two sensors in Settings → Advanced to display their live readings beside the main icon. Follows the temperature unit preference, saves selections per home, and shows placeholders when readings are unavailable.
 
 ## 3.3.0

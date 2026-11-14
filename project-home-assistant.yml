@@ -1,0 +1,43 @@
+# Local Mac Catalyst build with no Apple Developer Program provisioning.
+# Keep shared sources and dependencies in project.yml.
+include:
+  - project.yml
+
+name: ItsyhomeHomeAssistant
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGNING_ALLOWED: YES
+    PROVISIONING_PROFILE_SPECIFIER: ""
+    ENABLE_HARDENED_RUNTIME: NO
+    OTHER_SWIFT_FLAGS: "$(inherited) -D HOME_ASSISTANT_ONLY"
+
+targets:
+  Itsyhome:
+    supportedDestinations:REPLACE:
+      - maccatalyst
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha
+        PRODUCT_NAME: Itsyhome HA
+        INFOPLIST_KEY_CFBundleDisplayName: Itsyhome HA
+        CODE_SIGN_ENTITLEMENTS: Itsyhome/HomeAssistantOnly.entitlements
+    # Replace the entire map: an additive merge would retain HomeKit/iCloud.
+    entitlements:REPLACE:
+      path: Itsyhome/HomeAssistantOnly.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.network.server: true
+        com.apple.security.personal-information.location: true
+  macOSBridge:
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha.macOSBridge
+  macOSBridgeTests:
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha.macOSBridgeTests
