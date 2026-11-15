@@ -17,6 +17,8 @@ class AdvancedSection: SettingsCard, NSMenuDelegate {
     private let menuBarTemperaturePopUp = NSPopUpButton()
     private let menuBarHumidityPopUp = NSPopUpButton()
     private var menuData: MenuData?
+    private var temperatureSources: [MenuBarClimateDisplay.Source] = []
+    private var humiditySources: [MenuBarClimateDisplay.Source] = []
     private var isSelectingSensor = false
     private let autoGroupsSwitch = NSSwitch()
     private let historySwitch = NSSwitch()
@@ -36,6 +38,8 @@ class AdvancedSection: SettingsCard, NSMenuDelegate {
 
     func configure(with data: MenuData) {
         menuData = data
+        temperatureSources = MenuBarClimateDisplay.sources(in: data, reading: .temperature)
+        humiditySources = MenuBarClimateDisplay.sources(in: data, reading: .humidity)
         loadMenuBarClimatePreferences()
     }
 
@@ -290,10 +294,8 @@ class AdvancedSection: SettingsCard, NSMenuDelegate {
         var options: [(id: String?, title: String)] = [
             (nil, String(localized: "settings.advanced.menu_bar_sensor_none", defaultValue: "None", bundle: .macOSBridge))
         ]
-        if let menuData {
-            for source in MenuBarClimateDisplay.sources(in: menuData, reading: reading) {
-                options.append((source.serviceId, source.title))
-            }
+        for source in reading == .temperature ? temperatureSources : humiditySources {
+            options.append((source.serviceId, source.title))
         }
         if let selectedId, !options.contains(where: { $0.id == selectedId }) {
             options.append((selectedId, String(localized: "settings.advanced.menu_bar_sensor_unavailable", defaultValue: "Unavailable sensor", bundle: .macOSBridge)))

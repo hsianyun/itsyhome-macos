@@ -412,12 +412,6 @@ class RoomsTableView: NSTableView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        // Embedded controls own their clicks. NSTableView's selection/drag
-        // tracking must not consume a disclosure or visibility-button press.
-        if let button = interactiveButton(at: event.locationInWindow) {
-            button.mouseDown(with: event)
-            return
-        }
         let point = convert(event.locationInWindow, from: nil)
         let clickedRow = row(at: point)
 
@@ -434,18 +428,5 @@ class RoomsTableView: NSTableView {
         }
 
         super.mouseDown(with: event)
-    }
-
-    func interactiveButton(at windowPoint: NSPoint) -> NSButton? {
-        let clickedRow = row(at: convert(windowPoint, from: nil))
-        guard clickedRow >= 0,
-              let cell = view(atColumn: 0, row: clickedRow, makeIfNecessary: false),
-              let parent = cell.superview else { return nil }
-        var hit = cell.hitTest(parent.convert(windowPoint, from: nil))
-        while let view = hit, view !== cell {
-            if let button = view as? NSButton, button.isEnabled { return button }
-            hit = view.superview
-        }
-        return nil
     }
 }

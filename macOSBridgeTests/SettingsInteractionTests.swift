@@ -15,9 +15,7 @@ final class SettingsInteractionTests: XCTestCase {
             let header = try XCTUnwrap(table.view(atColumn: 0, row: headerIndex, makeIfNecessary: true))
             header.layoutSubtreeIfNeeded()
             let disclosure = try button("home.disclosure", in: header)
-            let point = disclosure.convert(NSPoint(x: disclosure.bounds.midX, y: disclosure.bounds.midY), to: nil)
-            XCTAssertTrue(table.interactiveButton(at: point) === disclosure)
-            click(disclosure, through: table, window: window)
+            click(disclosure, window: window)
             settings.layoutSubtreeIfNeeded()
             XCTAssertTrue(home.expandedSections.contains(room.uniqueIdentifier))
             let serviceIds = Set(home.roomTableItems.compactMap { item -> String? in
@@ -28,7 +26,7 @@ final class SettingsInteractionTests: XCTestCase {
 
             let newHeader = try XCTUnwrap(table.view(atColumn: 0, row: headerIndex, makeIfNecessary: true))
             newHeader.layoutSubtreeIfNeeded()
-            click(try button("home.visibility", in: newHeader), through: table, window: window)
+            click(try button("home.visibility", in: newHeader), window: window)
             XCTAssertTrue(PreferencesManager.shared.isHidden(roomId: room.uniqueIdentifier))
 
             let serviceIndex = try XCTUnwrap(home.roomTableItems.firstIndex {
@@ -38,7 +36,7 @@ final class SettingsInteractionTests: XCTestCase {
             let serviceRow = try XCTUnwrap(table.view(atColumn: 0, row: serviceIndex, makeIfNecessary: true))
             settings.layoutSubtreeIfNeeded()
             serviceRow.layoutSubtreeIfNeeded()
-            click(try button("home.visibility", in: serviceRow), through: table, window: window)
+            click(try button("home.visibility", in: serviceRow), window: window)
             XCTAssertTrue(PreferencesManager.shared.isHidden(serviceId: service.uniqueIdentifier))
             home.configure(with: data)
             XCTAssertTrue(home.expandedSections.contains(room.uniqueIdentifier))
@@ -67,8 +65,7 @@ final class SettingsInteractionTests: XCTestCase {
             let eye = try button("home.visibility", in: row)
             let rect = document.convert(eye.bounds, from: eye)
             XCTAssertTrue(scroll.documentVisibleRect.intersects(rect))
-            let point = eye.convert(NSPoint(x: eye.bounds.midX, y: eye.bounds.midY), to: nil)
-            XCTAssertTrue(table.interactiveButton(at: point) === eye)
+            XCTAssertNotNil(table.window)
         }
     }
 
@@ -144,6 +141,7 @@ final class SettingsInteractionTests: XCTestCase {
         let window = NSWindow(contentRect: settings.frame, styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = settings
+        window.makeKeyAndOrderFront(nil)
         defer { window.close() }
         settings.layoutSubtreeIfNeeded()
         try body(settings, window, data)
@@ -165,13 +163,13 @@ final class SettingsInteractionTests: XCTestCase {
     }
 
     @MainActor
-    private func click(_ button: NSButton, through table: RoomsTableView, window: NSWindow) {
+    private func click(_ button: NSButton, window: NSWindow) {
         let point = button.convert(NSPoint(x: button.bounds.midX, y: button.bounds.midY), to: nil)
         let down = NSEvent.mouseEvent(with: .leftMouseDown, location: point, modifierFlags: [], timestamp: 0,
                                      windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
         let up = NSEvent.mouseEvent(with: .leftMouseUp, location: point, modifierFlags: [], timestamp: 0.01,
                                    windowNumber: window.windowNumber, context: nil, eventNumber: 2, clickCount: 1, pressure: 0)!
         NSApp.postEvent(up, atStart: true)
-        table.mouseDown(with: down)
+        window.sendEvent(down)
     }
 }

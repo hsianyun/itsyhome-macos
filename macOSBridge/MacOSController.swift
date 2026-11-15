@@ -34,6 +34,7 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
     var currentMenuData: MenuData?
     var menuBarTemperatureSource: MenuBarClimateDisplay.Source?
     var menuBarHumiditySource: MenuBarClimateDisplay.Source?
+    var menuBarClimateSelection: ClimateSelection?
     var menuIsOpen = false
     var needsRebuild = false
 
@@ -645,7 +646,7 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
             return
         }
         if let data = currentMenuData {
-            rebuildMenu(with: data)
+            rebuildMenu(with: data, sourceDataChanged: false)
         }
         HotkeyManager.shared.registerShortcuts()
     }
@@ -720,6 +721,9 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
             StartupLogger.log("Decoded: \(menuData.homes.count) homes, \(menuData.rooms.count) rooms, \(menuData.accessories.count) accessories, \(menuData.scenes.count) scenes")
             DispatchQueue.main.async {
                 self.rebuildMenu(with: menuData)
+                // Only a new platform snapshot refreshes settings. Local
+                // visibility/order actions already update their own rows.
+                NotificationCenter.default.post(name: SettingsView.menuDataChangedNotification, object: menuData)
             }
         } catch let decodingError as DecodingError {
             switch decodingError {
@@ -883,15 +887,14 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
 
     // MARK: - Menu Building
 
-    func rebuildMenu(with data: MenuData) {
+    func rebuildMenu(with data: MenuData, sourceDataChanged: Bool = true) {
         StartupLogger.log("rebuildMenu start — \(data.rooms.count) rooms, \(data.accessories.count) accessories, \(data.scenes.count) scenes")
         currentMenuData = data
         mainMenu.removeAllItems()
 
         PreferencesManager.shared.currentHomeId = data.selectedHomeId
         PreferencesManager.shared.currentHomeName = data.homes.first(where: { $0.uniqueIdentifier == data.selectedHomeId })?.name
-        refreshMenuBarClimateSources()
-        NotificationCenter.default.post(name: SettingsView.menuDataChangedNotification, object: data)
+        refreshMenuBarClimateSources(force: sourceDataChanged)
         CloudSyncManager.shared.updateMenuData(data)
         HotkeyManager.shared.registerShortcuts()
 
@@ -1079,7 +1082,7 @@ public class MacOSController: NSObject, iOS2Mac, NSMenuDelegate, PlatformPickerD
             if needsRebuild {
                 needsRebuild = false
                 if let data = currentMenuData {
-                    rebuildMenu(with: data)
+                    rebuildMenu(with: data, sourceDataChanged: false)
                 }
                 HotkeyManager.shared.registerShortcuts()
             }

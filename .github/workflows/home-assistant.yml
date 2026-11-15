@@ -13,7 +13,7 @@ permissions:
 jobs:
   credentials:
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode 16.4
@@ -22,8 +22,11 @@ jobs:
         run: brew install xcodegen
       - name: Verify credentials in a locally signed Catalyst app
         run: ./scripts/test-ha-credentials.sh
+      - name: Verify room clicks and dragging in a Catalyst window
+        run: ./scripts/test-settings-catalyst.sh
       - name: Verify settings interactions
         run: |
+          xcodegen generate --spec project-home-assistant.yml
           xcodebuild test \
             -project ItsyhomeHomeAssistant.xcodeproj \
             -scheme Itsyhome \
@@ -31,6 +34,13 @@ jobs:
             -destination "platform=macOS" \
             -derivedDataPath build/credential-probe \
             -only-testing:macOSBridgeTests/SettingsInteractionTests
+      - name: Upload Catalyst UI test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: settings-catalyst-test-results
+          path: build/settings-catalyst/*.xcresult
+          if-no-files-found: ignore
 
   build:
     needs: credentials

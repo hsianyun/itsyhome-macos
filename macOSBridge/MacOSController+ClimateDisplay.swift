@@ -1,6 +1,13 @@
 import AppKit
 
 extension MacOSController {
+    struct ClimateSelection: Equatable {
+        let homeId: String?
+        let temperatureId: String?
+        let humidityId: String?
+        let enabled: Bool
+    }
+
     private func menuBarClimateSource(reading: MenuBarClimateDisplay.Reading) -> MenuBarClimateDisplay.Source? {
         guard let data = currentMenuData else { return nil }
         let preferences = PreferencesManager.shared
@@ -9,7 +16,17 @@ extension MacOSController {
         return MenuBarClimateDisplay.sources(in: data, reading: reading).first { $0.serviceId == selectedId }
     }
 
-    func refreshMenuBarClimateSources() {
+    func refreshMenuBarClimateSources(force: Bool = false) {
+        let preferences = PreferencesManager.shared
+        let selection = ClimateSelection(homeId: preferences.currentHomeId,
+                                         temperatureId: preferences.menuBarTemperatureSensorId,
+                                         humidityId: preferences.menuBarHumiditySensorId,
+                                         enabled: preferences.menuBarClimateEnabled)
+        guard force || selection != menuBarClimateSelection || currentMenuData == nil else {
+            updateMenuBarClimateDisplay()
+            return
+        }
+        menuBarClimateSelection = selection
         menuBarTemperatureSource = menuBarClimateSource(reading: .temperature)
         menuBarHumiditySource = menuBarClimateSource(reading: .humidity)
         updateMenuBarClimateDisplay()

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Restore upstream Home mouse-event handling and remove duplicate Settings refreshes after room visibility/order changes. Cache climate sources between unrelated preference changes. Build 33004 adds UI automation of room expansion, hiding/unhiding and consecutive drags in a Catalyst host running the full production plugin.
+
 - Fix Home settings expansion and visibility controls, including rooms containing only temperature/humidity sensors with summary mode enabled. Fix settings scrolling and keep long sensor-source menus selectable and stable during refreshes. Build 33003 adds native AppKit interaction coverage before packaging.
 
 - Fix Home Assistant local-build connections reporting "Home Assistant is not configured" after entering a URL and token – the ad-hoc Catalyst host cannot use the provisioned data-protection Keychain. The local build now shares a native encrypted login-Keychain provider with its Catalyst code, reports persistence errors, and validates submitted credentials before saving. Build 33002 includes unit coverage and a signed Catalyst credential round-trip check before packaging.

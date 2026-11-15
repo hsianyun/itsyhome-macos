@@ -28,7 +28,7 @@ targets:
         # Override XcodeGen's application_iOS iPhone Developer preset.
         CODE_SIGN_IDENTITY: "-"
         PRODUCT_NAME: Itsyhome HA
-        CURRENT_PROJECT_VERSION: "33003"
+        CURRENT_PROJECT_VERSION: "33004"
         INFOPLIST_KEY_CFBundleDisplayName: Itsyhome HA
         CODE_SIGN_ENTITLEMENTS: Itsyhome/HomeAssistantOnly.entitlements
     # Replace the entire map: an additive merge would retain HomeKit/iCloud.
