@@ -14,7 +14,9 @@ final class SettingsProbeUITests: XCTestCase {
         }
         func wait(_ description: String, _ condition: @escaping ([String: Any]) -> Bool) {
             let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition(state()) }, object: nil)
-            XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 10), .completed, description)
+            let result = XCTWaiter.wait(for: [ready], timeout: 10)
+            if result != .completed { print(app.debugDescription) }
+            XCTAssertEqual(result, .completed, description)
         }
         wait("fixture ready") { $0["ready"] as? Bool == true }
         let initialUpdates = try XCTUnwrap(state()["dataUpdates"] as? Int)
@@ -32,11 +34,11 @@ final class SettingsProbeUITests: XCTestCase {
 
         let source = app.buttons["probe.disclosure.one"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: -18, dy: 0))
         let end = app.buttons["probe.disclosure.three"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: -18, dy: 12))
-        source.press(forDuration: 0.3, thenDragTo: end)
+        source.click(forDuration: 0.3, thenDragTo: end)
         wait("drag persists the new order") { $0["order"] as? [String] == ["two", "three", "one"] && $0["savedOrder"] as? [String] == ["two", "three", "one"] }
         let back = app.buttons["probe.disclosure.one"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: -18, dy: 0))
         let top = app.buttons["probe.disclosure.two"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: -18, dy: -12))
-        back.press(forDuration: 0.3, thenDragTo: top)
+        back.click(forDuration: 0.3, thenDragTo: top)
         wait("a second drag restores the order") { $0["order"] as? [String] == ["one", "two", "three"] && $0["savedOrder"] as? [String] == ["one", "two", "three"] }
         XCTAssertEqual(state()["dataUpdates"] as? Int, initialUpdates, "Local actions must not rebroadcast platform snapshots or reconfigure Settings")
         XCTAssertEqual(state()["climateEnabled"] as? Bool, true)
