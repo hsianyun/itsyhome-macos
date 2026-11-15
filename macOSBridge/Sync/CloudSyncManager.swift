@@ -17,7 +17,8 @@ final class CloudSyncManager {
     static let syncStatusChangedNotification = Notification.Name("CloudSyncManagerStatusChanged")
 
     private let defaults = UserDefaults.standard
-    private let cloudStore = NSUbiquitousKeyValueStore.default
+    // Do not instantiate an iCloud store in builds without its entitlement.
+    private lazy var cloudStore = NSUbiquitousKeyValueStore.default
 
     private var isListening = false
     private var isSyncing = false
@@ -46,6 +47,7 @@ final class CloudSyncManager {
     // MARK: - Menu data
 
     func updateMenuData(_ data: MenuData) {
+        guard !BuildFeatures.isHomeAssistantOnly else { return }
         translator.updateMenuData(data)
         translator.updateGroupIds(Set(PreferencesManager.shared.deviceGroups.map { $0.id }))
 
@@ -66,13 +68,14 @@ final class CloudSyncManager {
     // MARK: - Public API
 
     var isSyncEnabled: Bool {
-        get { defaults.bool(forKey: Keys.syncEnabled) }
+        get { !BuildFeatures.isHomeAssistantOnly && defaults.bool(forKey: Keys.syncEnabled) }
         set {
-            defaults.set(newValue, forKey: Keys.syncEnabled)
-            if newValue && ProStatusCache.shared.isPro {
+            let enabled = newValue && !BuildFeatures.isHomeAssistantOnly
+            defaults.set(enabled, forKey: Keys.syncEnabled)
+            if enabled && ProStatusCache.shared.isPro {
                 startListening()
                 uploadAllSyncableKeys()
-            } else if !newValue {
+            } else if !enabled {
                 stopListening()
             }
             NotificationCenter.default.post(name: Self.syncStatusChangedNotification, object: nil)
@@ -85,6 +88,7 @@ final class CloudSyncManager {
     }
 
     func startListening() {
+        guard !BuildFeatures.isHomeAssistantOnly else { return }
         guard !isListening else { return }
         guard ProStatusCache.shared.isPro && isSyncEnabled else { return }
 

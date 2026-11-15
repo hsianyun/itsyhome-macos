@@ -1,0 +1,70 @@
+# Test-only Catalyst host for the complete production AppKit plugin.
+include:
+  - project-home-assistant.yml
+
+name: ItsyhomeSettingsProbe
+
+targets:
+  macOSBridge:
+    sources:
+      - tools/SettingsProbeShared
+      - tools/SettingsProbeBridge
+    settings:
+      base:
+        INFOPLIST_FILE: work/SettingsProbeBridge/Info.plist
+    info:
+      path: work/SettingsProbeBridge/Info.plist
+      properties:
+        NSPrincipalClass: SettingsProbeDriver
+
+  SettingsProbe:
+    type: application
+    platform: iOS
+    supportedDestinations: [iOS, maccatalyst]
+    sources:
+      - tools/SettingsProbeShared
+      - tools/SettingsProbe
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha.settings-probe
+        SUPPORTS_MACCATALYST: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_ENTITLEMENTS: Itsyhome/HomeAssistantOnly.entitlements
+        DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER: NO
+        TARGETED_DEVICE_FAMILY: "6"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    info:
+      path: work/SettingsProbe/Info.plist
+      properties:
+        LSUIElement: true
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).ProbeSceneDelegate
+    scheme: {}
+    dependencies:
+      - target: macOSBridge
+        platformFilter: maccatalyst
+        embed: true
+        codeSign: true
+        copyPhase:
+          destination: plugins
+
+  SettingsProbeUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - tools/SettingsProbeUITests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hsianyun.itsyhome.ha.settings-probe.tests
+        CODE_SIGN_IDENTITY: "-"
+        GENERATE_INFOPLIST_FILE: YES
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+    scheme:
+      testTargets:
+        - SettingsProbeUITests

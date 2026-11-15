@@ -13,7 +13,7 @@ A native macOS menu bar app for controlling your HomeKit and Home Assistant smar
 
 **[itsyhome.app](https://itsyhome.app)**
 
-**Installing this fork:** see [the Mac installation guide](INSTALL.md) to build, install and enable the combined temperature and humidity display.
+**Installing this fork:** the [Home Assistant-only local build](INSTALL.md) includes the combined temperature and humidity display and uses local signing without an Apple Developer Program membership. Run `./scripts/build-home-assistant.sh` on your Mac, then install **Itsyhome HA.app**.
 
 ### Also available on iOS and tvOS
 

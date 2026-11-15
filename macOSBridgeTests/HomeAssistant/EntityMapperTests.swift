@@ -65,7 +65,9 @@ final class EntityMapperTests: XCTestCase {
         loadData(states: [createEntityState(entityId: entityId, state: "unavailable", attributes: ["device_class": "temperature"])])
         let initial = try XCTUnwrap(mapper.generateMenuData().accessories.flatMap(\.services).first)
         let characteristic = try XCTUnwrap(initial.currentTemperatureId)
-        XCTAssertTrue(mapper.getCharacteristicValues(for: entityId).isEmpty)
+        // Other generic characteristics can be present; the temperature
+        // reading itself must stay absent until the sensor recovers.
+        XCTAssertNil(mapper.getCharacteristicValues(for: entityId)[UUID(uuidString: characteristic)!])
 
         mapper.updateState(createEntityState(entityId: entityId, state: "21.5", attributes: ["device_class": "temperature"]))
         let recovered = try XCTUnwrap(mapper.generateMenuData().accessories.flatMap(\.services).first)

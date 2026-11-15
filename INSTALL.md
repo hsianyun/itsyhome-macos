@@ -1,18 +1,17 @@
-# Install this fork on your Mac
+# Install the Home Assistant-only version on your Mac
 
-This fork adds a combined temperature and humidity reading beside the main Itsyhome menu bar icon. Install a build from this repository to use it; the upstream App Store app does not include this fork's changes.
+The recommended local build is **Itsyhome HA**. It connects directly to Home Assistant and includes the combined temperature and humidity display. It uses Xcode's **Sign to Run Locally** signing identity, with no Apple Developer Program membership, development team or provisioning profile to configure.
+
+HomeKit mode and iCloud sync are disabled in this build. It has its own app identifier, settings and Home Assistant credential entry, so it can coexist with the original Itsyhome app. The original full-featured project remains available in `project.yml`.
 
 ## Requirements
 
 - macOS 14 or later.
-- The full Xcode application, opened once to finish installing its components. The repository's CI uses Xcode 16.4.
+- The full Xcode application. Open it once and finish installing its components. The included CI workflow uses Xcode 16.4.
 - [Homebrew](https://brew.sh/) and XcodeGen, or another installation of XcodeGen.
-- A Home Assistant server that your Mac can reach, and a long-lived access token.
-- For the normal signed development build below, your own Apple development signing team. The default project includes HomeKit and iCloud capabilities, so the team and provisioning profile must support those capabilities even if you choose Home Assistant at runtime.
+- Your Home Assistant server URL and a long-lived access token.
 
-## 1. Download the source
-
-In Terminal:
+## 1. Download this fork
 
 ```sh
 brew install xcodegen
@@ -20,80 +19,102 @@ git clone https://github.com/hsianyun/itsyhome-macos.git
 cd itsyhome-macos
 ```
 
-If you already have a clean checkout of this fork, update it instead:
+If the Home Assistant-only pull request has not been merged into `main` yet, check out its branch before building:
 
 ```sh
-git switch main
-git pull --ff-only origin main
+git fetch origin codex/home-assistant-only
+git switch --track origin/codex/home-assistant-only
 ```
 
-## 2. Configure signing and build
+For an existing checkout already on that branch, use `git pull --ff-only`. After merging the pull request, you can use `main` instead.
 
-1. Open **Xcode → Settings → Accounts** (called **Apple Accounts** in newer Xcode versions) and sign in to your Apple development account.
-2. In `project.yml`, replace the existing `DEVELOPMENT_TEAM` value with your team's ID. Replace the `PRODUCT_BUNDLE_IDENTIFIER` values for `Itsyhome`, `macOSBridge` and `macOSBridgeTests` with unique identifiers you control, for example `com.yourname.itsyhome`, `com.yourname.itsyhome.macOSBridge` and `com.yourname.itsyhome.macOSBridgeTests`. Use the same prefix for `bundleIdPrefix` at the top of the file.
-3. Generate the Xcode project and open it:
+## 2. Build the local application
 
-   ```sh
-   xcodegen generate
-   open Itsyhome.xcodeproj
-   ```
+```sh
+./scripts/build-home-assistant.sh
+```
 
-4. Select the **Itsyhome** scheme and **My Mac (Mac Catalyst)** as the run destination. Resolve Swift package dependencies if Xcode prompts you.
-5. Check **Signing & Capabilities** for the app and plugin targets. Use your own team with automatic signing and let Xcode create the required profiles.
-6. Choose **Product → Run**. The app runs in the menu bar; its main window is intentionally hidden.
+The script generates **ItsyhomeHomeAssistant.xcodeproj** from `project-home-assistant.yml`, builds a Release app, checks its code signature and verifies that its signed entitlements contain no HomeKit or iCloud provisioning requirements. Xcode signs nested frameworks and the native menu bar plugin as part of the build.
 
-The source of truth is `project.yml`. Regenerating the Xcode project overwrites settings made only in the generated project. Keep any persistent signing changes in `project.yml`.
+The results are:
 
-If Xcode reports that your team cannot provision HomeKit or iCloud, the default project cannot be signed by that team as configured. Use a team/profile with those capabilities or make a separate Home Assistant-only development configuration that omits them. An unsigned compile passing does not establish that an app can launch on your Mac. Apple's [running an app guide](https://developer.apple.com/documentation/xcode/building-and-running-an-app) explains local signing and provisioning.
+- `build/home-assistant/Build/Products/Release-maccatalyst/Itsyhome HA.app`
+- `build/home-assistant/Itsyhome-HA.zip`
 
-## 3. Install the built application
+You do not need to edit team IDs or bundle identifiers. The local build overrides the original project's signing settings and replaces its entire entitlement map, keeping sandbox and network permissions.
 
-1. Quit any other running copy of Itsyhome from its menu bar menu.
-2. In Xcode's Project navigator, expand **Products**, right-click **Itsyhome.app**, and choose **Show in Finder**. If Products is hidden, choose **Product → Show Build Folder in Finder**, then open the `Products/Debug-maccatalyst` folder.
-3. Copy **Itsyhome.app** into your Mac's **Applications** folder, replacing an older copy only if you intend to replace it. Keep the entire application bundle together; it contains the native menu bar plugin and frameworks.
-4. Stop the Xcode run, then open the installed copy from Applications.
+To build and run the unit tests as well:
 
-This is a development-signed application, not a notarized release installer. Keep using the same signing identity and bundle identifiers for later local builds if you want them to use the same app identity. [Apple's code signing documentation](https://developer.apple.com/documentation/xcode/creating-distribution-signed-code-for-the-mac) covers preparing a build for distribution to other Macs.
+```sh
+./scripts/build-home-assistant.sh --test
+```
+
+If you prefer Xcode's interface:
+
+```sh
+xcodegen generate --spec project-home-assistant.yml
+open ItsyhomeHomeAssistant.xcodeproj
+```
+
+Choose the **Itsyhome** scheme and **My Mac (Mac Catalyst)**, then **Product → Run**. Leave the generated local signing settings in place. The app appears in the menu bar; its main window is intentionally hidden.
+
+If Terminal reports that `xcodebuild` requires Xcode, choose your installed Xcode in **Xcode → Settings → Locations → Command Line Tools** and try again.
+
+## 3. Install and open it
+
+Quit any running copy of **Itsyhome HA** before replacing it. In Finder, copy the built **Itsyhome HA.app** into Applications, then open it. Keep the entire app bundle together, including its plugin and frameworks.
+
+Alternatively, install into your personal Applications folder from the repository directory:
+
+```sh
+mkdir -p "$HOME/Applications"
+ditto "build/home-assistant/Build/Products/Release-maccatalyst/Itsyhome HA.app" "$HOME/Applications/Itsyhome HA.app"
+open "$HOME/Applications/Itsyhome HA.app"
+```
+
+This is a locally signed application for your own Mac. It is not a notarized distribution build. Apple describes this signing identity as [Sign to Run Locally](https://developer.apple.com/documentation/technotes/tn3127-inside-code-signing-requirements). Local signing changes between builds can cause macOS to ask for network or Keychain access again.
 
 ## 4. Connect Home Assistant
 
-1. In Home Assistant, open your **Profile → Security → Long-lived access tokens**, then create a token.
-2. On Itsyhome's first launch, choose **Home Assistant**. If it is already configured for HomeKit, switch platform in **Settings → General**.
-3. Enter your Home Assistant server URL, such as `http://homeassistant.local:8123`, and the token in the connection screen or **Settings → Home Assistant**.
-4. Connect and allow local network access if macOS prompts for it.
+The app starts in Home Assistant mode and opens the connection settings when credentials are missing.
 
-Keep the token private. Use the existing URL and token configuration if you have already connected this fork to your server.
+1. In Home Assistant, open **Profile → Security → Long-lived access tokens**, then create a token.
+2. In **Itsyhome HA → Settings → Home Assistant**, enter your server URL, such as `http://homeassistant.local:8123`, and the token.
+3. Connect and allow local network access if macOS prompts for it.
+
+Enter credentials again even if the original Itsyhome app is already configured: this version deliberately uses a separate credential entry. Tokens stay in Keychain. Keep iCloud-dependent features and Apple Home control in the original full build.
+
+Build **33002** fixes the older local build's "Home Assistant is not configured" error after entering credentials. Quit the old app, replace it with the updated build, reopen it and enter your URL and token again. If macOS asks to allow this app access to its login Keychain entry, allow access. The local build uses the encrypted login Keychain through its native plugin, without adding provisioning entitlements or saving tokens in preferences. Storage failures now show their actual Keychain error.
 
 ## 5. Enable the combined readings
 
+Build **33004** restores the original Home click handling and avoids rebuilding Settings again after visibility/order changes. Its workflow additionally checks room expansion, hiding/unhiding and room reordering with UI automation in a Catalyst app using the full production plugin. Replace the previous app as usual; credentials and sensor selections are retained.
+
+Build **33003** improved the Advanced sensor menus and made individual sensors manageable with summary mode enabled. Use **33004 or later** for the corrected Home interaction and refresh behavior. Existing credentials and sensor selections are retained; allow login-Keychain access if prompted after an update.
+
 1. Open **Settings → Advanced**.
 2. Enable **Temperature and humidity in menu bar**.
-3. Choose a **Temperature sensor** and a **Humidity sensor**. The selectors include room names and Home Assistant entity IDs to help identify your devices.
+3. Choose a **Temperature sensor** and a **Humidity sensor**.
 4. Set **Temperature units** to **Celsius**, **Fahrenheit** or **System default**.
 
-The main menu bar item now shows a combined reading, for example **21.5°C · 45%**, beside the existing icon. Clicking it still opens the usual Home menu. You can leave **Summarise temperature and humidity** enabled; separate sensor pins are optional.
+The main icon now includes a combined reading such as **21.5°C · 45%**. Clicking it opens the normal Home menu. You can leave **Summarise temperature and humidity** enabled; separate pinned items are optional.
 
-The readings update while the menu is closed. Sensor choices are saved per home. Unknown, missing or unavailable readings show `--°C` / `--°F` and `--%` until data returns. Turn the display switch off to restore the icon-only item.
+Readings update while the menu is closed, and selections are saved per home. Missing or unavailable values show `--°C` / `--°F` and `--%` until data returns.
 
-If a sensor is missing from the selectors, check that its Home Assistant entity is enabled and has `device_class: temperature` or `device_class: humidity`. Also check Itsyhome's entity category filter in **Settings → Home Assistant** if Home Assistant marks the entity as diagnostic or configuration. Reconnect or use the menu's refresh action after changing entity metadata.
+If a sensor is absent, check that its Home Assistant entity is enabled and has `device_class: temperature` or `device_class: humidity`. Check **Settings → Home Assistant → Entity categories** if the entity is classified as diagnostic or configuration. Refresh or reconnect after changing entity metadata.
 
-## Update or remove your local build
+## Build using GitHub Actions
 
-To update, quit Itsyhome, pull this fork's latest `main`, restore your local signing settings if needed, regenerate the project, rebuild, then copy the new app into Applications again. If you changed `project.yml` for signing, preserve those edits before pulling; keep your identifiers and team settings out of commits intended for this repository.
+The **Home Assistant local build** workflow builds this variant on a Mac runner, runs tests and uploads the **Itsyhome-HA** artifact containing `Itsyhome-HA.zip` after a successful run. It also supports **Run workflow** from the repository's **Actions** tab.
 
-To stop running this version, quit it and remove its application bundle from Applications. You can then launch another installed version.
+Before packaging, the workflow also runs `scripts/test-ha-credentials.sh`. This launches a locally signed, sandboxed Catalyst test app and verifies saving, reopening, replacing and deleting a synthetic token through the native Keychain provider. The test uses a unique Keychain entry and removes it; it does not use real Home Assistant credentials.
 
-## Developer verification
+Forks may have Actions disabled initially. If the workflow does not run, enable workflows in the repository's Actions tab first. A workflow artifact exists only after the Mac build and tests succeed. A downloaded artifact is still locally signed rather than notarized; building on your own Mac is the recommended local installation method.
 
-The included GitHub Actions workflow is configured to run the macOS tests on pushes to `main` and pull requests. If Actions is disabled for this fork, open the repository's **Actions** tab and enable its workflows first. To run the same signing-disabled test command on a Mac after generating the project:
+## Updating
 
-```sh
-xcodebuild test \
-  -scheme Itsyhome \
-  -destination "platform=macOS" \
-  CODE_SIGN_IDENTITY="" \
-  CODE_SIGNING_REQUIRED=NO \
-  CODE_SIGNING_ALLOWED=NO
-```
+Quit **Itsyhome HA**, update your checkout, run the build script again, and replace the installed app bundle. This build keeps its settings separately from the original app. No personal team or signing changes need to be maintained in the repository.
 
-This test command is for verification; use the signed development build steps above to install and launch the app.
+## Building the original full version
+
+The existing `project.yml` still builds the full HomeKit/Home Assistant app with iCloud support. Generate it with `xcodegen generate` and follow [CONTRIBUTING.md](CONTRIBUTING.md). That configuration retains the original HomeKit/iCloud signing requirements and needs a compatible Apple development team and provisioning profile.

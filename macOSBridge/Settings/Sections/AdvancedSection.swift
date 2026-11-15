@@ -8,7 +8,7 @@
 import AppKit
 import Combine
 
-class AdvancedSection: SettingsCard {
+class AdvancedSection: SettingsCard, NSMenuDelegate {
 
     private let temperaturePopUp = NSPopUpButton()
     private let simpleLightSwitch = NSSwitch()
@@ -17,6 +17,9 @@ class AdvancedSection: SettingsCard {
     private let menuBarTemperaturePopUp = NSPopUpButton()
     private let menuBarHumidityPopUp = NSPopUpButton()
     private var menuData: MenuData?
+    private var temperatureSources: [MenuBarClimateDisplay.Source] = []
+    private var humiditySources: [MenuBarClimateDisplay.Source] = []
+    private var isSelectingSensor = false
     private let autoGroupsSwitch = NSSwitch()
     private let historySwitch = NSSwitch()
     private let historyProBadge = AdvancedSection.createProChip()
@@ -35,6 +38,8 @@ class AdvancedSection: SettingsCard {
 
     func configure(with data: MenuData) {
         menuData = data
+        temperatureSources = MenuBarClimateDisplay.sources(in: data, reading: .temperature)
+        humiditySources = MenuBarClimateDisplay.sources(in: data, reading: .humidity)
         loadMenuBarClimatePreferences()
     }
 
@@ -79,6 +84,9 @@ class AdvancedSection: SettingsCard {
             popUp.controlSize = .small
             popUp.target = self
             popUp.action = action
+            popUp.menu?.autoenablesItems = false
+            popUp.menu?.delegate = self
+            popUp.setAccessibilityIdentifier(popUp === menuBarTemperaturePopUp ? "climate.temperature" : "climate.humidity")
             popUp.widthAnchor.constraint(equalToConstant: 250).isActive = true
             popUp.cell?.lineBreakMode = .byTruncatingTail
             let row = createSettingRow(label: label, control: popUp)
@@ -272,6 +280,9 @@ class AdvancedSection: SettingsCard {
     }
 
     private func loadMenuBarClimatePreferences() {
+        // A live data/preference notification must not replace the menu's
+        // items while AppKit is tracking a click, keyboard or scroll gesture.
+        guard !isSelectingSensor else { return }
         let preferences = PreferencesManager.shared
         menuBarClimateSwitch.state = preferences.menuBarClimateEnabled ? .on : .off
         menuBarClimateSwitch.isEnabled = menuData != nil
@@ -280,32 +291,41 @@ class AdvancedSection: SettingsCard {
     }
 
     private func configureSensorPopUp(_ popUp: NSPopUpButton, reading: MenuBarClimateDisplay.Reading, selectedId: String?) {
-        popUp.removeAllItems()
-        popUp.addItem(withTitle: String(localized: "settings.advanced.menu_bar_sensor_none", defaultValue: "None", bundle: .macOSBridge))
-        if let menuData {
-            for source in MenuBarClimateDisplay.sources(in: menuData, reading: reading) {
-                // Explicit menu items allow duplicate sensor names.
-                let item = NSMenuItem(title: source.title, action: nil, keyEquivalent: "")
-                item.representedObject = source.serviceId
+        var options: [(id: String?, title: String)] = [
+            (nil, String(localized: "settings.advanced.menu_bar_sensor_none", defaultValue: "None", bundle: .macOSBridge))
+        ]
+        for source in reading == .temperature ? temperatureSources : humiditySources {
+            options.append((source.serviceId, source.title))
+        }
+        if let selectedId, !options.contains(where: { $0.id == selectedId }) {
+            options.append((selectedId, String(localized: "settings.advanced.menu_bar_sensor_unavailable", defaultValue: "Unavailable sensor", bundle: .macOSBridge)))
+        }
+        let unchanged = popUp.numberOfItems == options.count && zip(popUp.itemArray, options).allSatisfy {
+            ($0.0.representedObject as? String) == $0.1.id && $0.0.title == $0.1.title
+        }
+        if !unchanged {
+            popUp.removeAllItems()
+            for option in options {
+                // Explicit items preserve duplicate names. Disable automatic
+                // validation: these options intentionally have no menu action;
+                // the pop-up button sends its own selection action.
+                let item = NSMenuItem(title: option.title, action: nil, keyEquivalent: "")
+                item.representedObject = option.id
                 popUp.menu?.addItem(item)
             }
         }
-        if let selectedId {
-            if let item = popUp.itemArray.first(where: { $0.representedObject as? String == selectedId }) {
-                popUp.select(item)
-            } else {
-                let item = NSMenuItem(
-                    title: String(localized: "settings.advanced.menu_bar_sensor_unavailable", defaultValue: "Unavailable sensor", bundle: .macOSBridge),
-                    action: nil, keyEquivalent: ""
-                )
-                item.representedObject = selectedId
-                popUp.menu?.addItem(item)
-                popUp.select(item)
-            }
-        } else {
-            popUp.selectItem(at: 0)
-        }
+        popUp.selectItem(at: options.firstIndex(where: { $0.id == selectedId }) ?? 0)
         popUp.isEnabled = menuData != nil && PreferencesManager.shared.menuBarClimateEnabled
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        isSelectingSensor = true
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        isSelectingSensor = false
+        // AppKit finishes sending the selected item's action after closing.
+        DispatchQueue.main.async { [weak self] in self?.loadMenuBarClimatePreferences() }
     }
 
     private func setupBindings() {

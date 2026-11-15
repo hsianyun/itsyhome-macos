@@ -21,12 +21,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         startupLog.info("[iOS] Application didFinishLaunching")
 
         // Only initialize HomeKit manager if HomeKit is the selected platform
+        #if !HOME_ASSISTANT_ONLY
         if PlatformManager.shared.selectedPlatform == .homeKit {
             homeKitManager = HomeKitManager()
             startupLog.info("[iOS] HomeKitManager created")
         } else {
             startupLog.info("[iOS] Skipping HomeKitManager - using Home Assistant")
         }
+        #endif
 
         // Load macOS plugin on Catalyst
         #if targetEnvironment(macCatalyst)
@@ -77,6 +79,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
 
         macOSController = pluginClass.init()
+        if BuildFeatures.isHomeAssistantOnly,
+           let store = macOSController?.homeAssistantTokenStore?() {
+            HAAuthManager.shared.useTokenStore(store)
+        }
         startupLog.info("[iOS] MacOSController instantiated")
 
         // Connect HomeKit if available

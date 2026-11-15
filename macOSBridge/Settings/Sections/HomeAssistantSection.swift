@@ -273,16 +273,14 @@ class HomeAssistantSection: SettingsCard, NSTextFieldDelegate {
             return
         }
 
-        // Save credentials
-        HAAuthManager.shared.saveCredentials(serverURL: url, accessToken: token)
-
         // Test connection
         isConnecting = true
         updateUI()
 
         Task {
             do {
-                let success = try await HAAuthManager.shared.validateCredentials()
+                let success = try await HAAuthManager.shared.validateCredentials(serverURL: url, accessToken: token)
+                try HAAuthManager.shared.saveCredentials(serverURL: url, accessToken: token)
                 await MainActor.run {
                     isConnecting = false
                     if success {
@@ -295,7 +293,6 @@ class HomeAssistantSection: SettingsCard, NSTextFieldDelegate {
             } catch {
                 await MainActor.run {
                     isConnecting = false
-                    HAAuthManager.shared.clearCredentials()
                     updateUI()
                     showAlert(title: String(localized: "alert.connection_failed.title", defaultValue: "Connection failed", bundle: .macOSBridge), message: error.localizedDescription)
                 }
@@ -312,7 +309,12 @@ class HomeAssistantSection: SettingsCard, NSTextFieldDelegate {
         alert.addButton(withTitle: String(localized: "common.cancel", defaultValue: "Cancel", bundle: .macOSBridge))
 
         if alert.runModal() == .alertFirstButtonReturn {
-            HAAuthManager.shared.clearCredentials()
+            do {
+                try HAAuthManager.shared.clearCredentials()
+            } catch {
+                showAlert(title: String(localized: "alert.error.title", defaultValue: "Itsyhome error", bundle: .macOSBridge), message: error.localizedDescription)
+                return
+            }
             serverURLField.stringValue = ""
             accessTokenField.stringValue = ""
             updateUI()

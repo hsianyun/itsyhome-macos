@@ -11,6 +11,15 @@ import os.log
 
 private let logger = Logger(subsystem: "com.nickustinov.itsyhome", category: "HAAuthManager")
 
+protocol HAAuthenticationClient: AnyObject {
+    func connect() async throws
+    func disconnect()
+    func getDevices() async throws -> [HADevice]
+    func getAreas() async throws -> [HAArea]
+}
+
+extension HomeAssistantClient: HAAuthenticationClient {}
+
 final class HAAuthManager {
 
     // MARK: - Singleton
@@ -20,41 +29,31 @@ final class HAAuthManager {
     // MARK: - Constants
 
     private let serverURLKey = "HomeAssistantServerURL"
-    private let keychainService = "com.nickustinov.itsyhome.homeassistant"
-    private let keychainAccount = "access_token"
+    private let defaults: UserDefaults
+    private(set) var tokenStore: HATokenStore
+    private let makeClient: (URL, String) throws -> HAAuthenticationClient
 
     // MARK: - Properties
 
     /// The Home Assistant server URL
     var serverURL: URL? {
         get {
-            guard let urlString = UserDefaults.standard.string(forKey: serverURLKey) else {
+            guard let urlString = defaults.string(forKey: serverURLKey) else {
                 return nil
             }
             return URL(string: urlString)
         }
         set {
             if let url = newValue {
-                UserDefaults.standard.set(url.absoluteString, forKey: serverURLKey)
+                defaults.set(url.absoluteString, forKey: serverURLKey)
             } else {
-                UserDefaults.standard.removeObject(forKey: serverURLKey)
+                defaults.removeObject(forKey: serverURLKey)
             }
         }
     }
 
-    /// The access token (stored securely in Keychain)
-    var accessToken: String? {
-        get {
-            return readTokenFromKeychain()
-        }
-        set {
-            if let token = newValue {
-                saveTokenToKeychain(token)
-            } else {
-                deleteTokenFromKeychain()
-            }
-        }
-    }
+    /// The access token is read from Keychain; save failures are never hidden.
+    var accessToken: String? { tokenStore.readToken() }
 
     /// Transient overrides set by network auto-switch. Not persisted.
     var effectiveServerURLOverride: URL?
@@ -77,21 +76,58 @@ final class HAAuthManager {
 
     // MARK: - Initialization
 
-    private init() {}
+    private convenience init() {
+        let service = BuildFeatures.isHomeAssistantOnly
+            ? "com.hsianyun.itsyhome.ha.homeassistant" : "com.nickustinov.itsyhome.homeassistant"
+        let store: HATokenStore
+        #if os(macOS) && HOME_ASSISTANT_ONLY
+        store = HALoginKeychainTokenStore(service: service, account: "access_token")
+        #else
+        store = HASecItemTokenStore(service: service, account: "access_token")
+        #endif
+        self.init(defaults: .standard, tokenStore: store)
+    }
+
+    init(defaults: UserDefaults, tokenStore: HATokenStore,
+         makeClient: @escaping (URL, String) throws -> HAAuthenticationClient = {
+             try HomeAssistantClient(serverURL: $0, accessToken: $1)
+         }) {
+        self.defaults = defaults
+        self.tokenStore = tokenStore
+        self.makeClient = makeClient
+    }
+
+    /// The Catalyst module shares the native plugin's store, including cameras.
+    func useTokenStore(_ store: HATokenStore) {
+        tokenStore = store
+    }
 
     // MARK: - Public methods
 
-    /// Save credentials
-    func saveCredentials(serverURL: URL, accessToken: String) {
+    /// Commit the URL only once the token can actually be saved and read back.
+    func saveCredentials(serverURL: URL, accessToken: String) throws {
+        let token = accessToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else { throw HAAuthError.invalidToken }
+        let status = tokenStore.storeToken(token)
+        guard status == errSecSuccess else {
+            logger.error("Failed to save Home Assistant credentials: \(status)")
+            throw HAAuthError.credentialStorageFailed(status)
+        }
+        guard tokenStore.readToken() == token else {
+            throw HAAuthError.credentialStorageFailed(errSecDecode)
+        }
         self.serverURL = serverURL
-        self.accessToken = accessToken
         logger.info("Credentials saved for \(serverURL.host ?? "unknown", privacy: .public)")
     }
 
-    /// Clear all credentials
-    func clearCredentials() {
+    func clearCredentials() throws {
+        let status = tokenStore.removeToken()
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw HAAuthError.credentialStorageFailed(status)
+        }
         serverURL = nil
-        accessToken = nil
+        effectiveServerURLOverride = nil
+        effectiveAccessTokenOverride = nil
         logger.info("Credentials cleared")
     }
 
@@ -101,8 +137,12 @@ final class HAAuthManager {
             throw HAAuthError.notConfigured
         }
 
-        // Try to connect and get config
-        let client = try HomeAssistantClient(serverURL: url, accessToken: token)
+        return try await validateCredentials(serverURL: url, accessToken: token)
+    }
+
+    /// Test submitted values before changing persistent credentials.
+    func validateCredentials(serverURL: URL, accessToken: String) async throws -> Bool {
+        let client = try makeClient(serverURL, accessToken)
 
         do {
             try await client.connect()
@@ -122,7 +162,11 @@ final class HAAuthManager {
             throw HAAuthError.notConfigured
         }
 
-        let client = try HomeAssistantClient(serverURL: url, accessToken: token)
+        return try await validateAndFetchCounts(serverURL: url, accessToken: token)
+    }
+
+    func validateAndFetchCounts(serverURL: URL, accessToken: String) async throws -> (deviceCount: Int, areaCount: Int) {
+        let client = try makeClient(serverURL, accessToken)
 
         do {
             try await client.connect()
@@ -138,70 +182,6 @@ final class HAAuthManager {
         }
     }
 
-    // MARK: - Keychain operations
-
-    private func saveTokenToKeychain(_ token: String) {
-        guard let tokenData = token.data(using: .utf8) else {
-            logger.error("Failed to encode token")
-            return
-        }
-
-        // Delete existing item first
-        deleteTokenFromKeychain()
-
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount,
-            kSecValueData as String: tokenData,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
-        ]
-
-        let status = SecItemAdd(query as CFDictionary, nil)
-
-        if status == errSecSuccess {
-            logger.info("Token saved to Keychain")
-        } else {
-            logger.error("Failed to save token to Keychain: \(status)")
-        }
-    }
-
-    private func readTokenFromKeychain() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        if status == errSecSuccess,
-           let data = result as? Data,
-           let token = String(data: data, encoding: .utf8) {
-            return token
-        }
-
-        return nil
-    }
-
-    private func deleteTokenFromKeychain() {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount
-        ]
-
-        let status = SecItemDelete(query as CFDictionary)
-
-        if status == errSecSuccess || status == errSecItemNotFound {
-            logger.info("Token deleted from Keychain")
-        } else {
-            logger.error("Failed to delete token from Keychain: \(status)")
-        }
-    }
 }
 
 // MARK: - Errors
@@ -210,6 +190,7 @@ enum HAAuthError: LocalizedError {
     case notConfigured
     case invalidURL
     case invalidToken
+    case credentialStorageFailed(Int32)
 
     var errorDescription: String? {
         switch self {
@@ -219,6 +200,10 @@ enum HAAuthError: LocalizedError {
             return "Invalid server URL"
         case .invalidToken:
             return "Invalid access token"
+        case .credentialStorageFailed(let status):
+            let message = String(localized: "error.home_assistant.keychain", defaultValue: "Unable to access Home Assistant credentials in Keychain.", bundle: .macOSBridge)
+            let detail = SecCopyErrorMessageString(status, nil) as String? ?? "Keychain error"
+            return "\(message) \(detail) (\(status))"
         }
     }
 }

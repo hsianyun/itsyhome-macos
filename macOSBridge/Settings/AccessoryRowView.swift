@@ -231,6 +231,7 @@ class AccessoryRowView: NSView {
             btn.imageScaling = .scaleProportionallyUpOrDown
             btn.target = self
             btn.action = #selector(chevronTapped)
+            btn.setAccessibilityIdentifier("home.disclosure")
             chevronButton = btn
             addSubview(btn)
         }
@@ -326,6 +327,7 @@ class AccessoryRowView: NSView {
             btn.imageScaling = .scaleProportionallyUpOrDown
             btn.target = self
             btn.action = #selector(eyeTapped)
+            btn.setAccessibilityIdentifier("home.visibility")
             eyeButton = btn
             addSubview(btn)
             needsPipe = true

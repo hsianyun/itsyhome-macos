@@ -38,6 +38,49 @@ final class PlatformManagerTests: XCTestCase {
 
     // MARK: - Selected platform tests
 
+    func testDefaultBuildFeaturesControlStoredPlatformSelection() {
+        userDefaults.set("homekit", forKey: "SelectedPlatform")
+        userDefaults.set(true, forKey: "HasCompletedOnboarding")
+        let manager = PlatformManager(defaults: userDefaults)
+        XCTAssertEqual(manager.selectedPlatform, BuildFeatures.isHomeAssistantOnly ? .homeAssistant : .homeKit)
+        XCTAssertFalse(manager.needsOnboarding)
+    }
+
+    func testHomeAssistantOnlyBuildIgnoresStoredHomeKitSelection() {
+        userDefaults.set("homekit", forKey: "SelectedPlatform")
+        userDefaults.set(true, forKey: "launchAtLogin")
+        let manager = PlatformManager(defaults: userDefaults, homeAssistantOnly: true)
+        XCTAssertEqual(manager.selectedPlatform, .homeAssistant)
+        XCTAssertFalse(manager.needsOnboarding)
+        XCTAssertFalse(manager.isPlatformConfigured)
+        userDefaults.set("http://localhost:8123", forKey: "HomeAssistantServerURL")
+        XCTAssertTrue(manager.isPlatformConfigured)
+    }
+
+    func testHomeAssistantOnlyBuildCannotSwitchToHomeKit() {
+        let manager = PlatformManager(defaults: userDefaults, homeAssistantOnly: true)
+        manager.selectHomeKit()
+        XCTAssertEqual(manager.selectedPlatform, .homeAssistant)
+        manager.selectedPlatform = .homeKit
+        XCTAssertEqual(manager.selectedPlatform, .homeAssistant)
+        XCTAssertEqual(userDefaults.string(forKey: "SelectedPlatform"), "homeassistant")
+        manager.resetPlatform()
+        XCTAssertEqual(manager.selectedPlatform, .homeAssistant)
+        XCTAssertFalse(manager.needsOnboarding)
+    }
+
+    func testRegularBuildStillMigratesAndSwitchesPlatforms() {
+        userDefaults.set(true, forKey: "launchAtLogin")
+        let manager = PlatformManager(defaults: userDefaults, homeAssistantOnly: false)
+        XCTAssertEqual(manager.selectedPlatform, .homeKit)
+        XCTAssertTrue(manager.hasCompletedOnboarding)
+        manager.selectHomeAssistant()
+        XCTAssertEqual(manager.selectedPlatform, .homeAssistant)
+        manager.resetPlatform()
+        XCTAssertEqual(manager.selectedPlatform, .none)
+        XCTAssertTrue(manager.needsOnboarding)
+    }
+
     func testDefaultSelectedPlatformIsNone() {
         // Given a fresh UserDefaults
         userDefaults.removeObject(forKey: "SelectedPlatform")
