@@ -17,3 +17,20 @@ final class ProbeAppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
 }
+
+/// Match the production app's hidden Catalyst scene instead of letting UIKit
+/// create an unrelated full-size window behind the native Settings window.
+final class ProbeSceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options: UIScene.ConnectionOptions) {
+        guard let scene = scene as? UIWindowScene else { return }
+        scene.sizeRestrictions?.minimumSize = CGSize(width: 1, height: 1)
+        scene.sizeRestrictions?.maximumSize = CGSize(width: 1, height: 1)
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 1, height: 1)
+        window.rootViewController = UIViewController()
+        window.makeKeyAndVisible()
+        self.window = window
+    }
+}

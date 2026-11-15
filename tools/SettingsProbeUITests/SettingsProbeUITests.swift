@@ -19,6 +19,7 @@ final class SettingsProbeUITests: XCTestCase {
             XCTAssertEqual(result, .completed, description)
         }
         wait("fixture ready") { $0["ready"] as? Bool == true }
+        print(app.debugDescription)
         let initialUpdates = try XCTUnwrap(state()["dataUpdates"] as? Int)
         let disclosure = app.buttons["probe.disclosure.one"]
         XCTAssertTrue(disclosure.waitForExistence(timeout: 5))

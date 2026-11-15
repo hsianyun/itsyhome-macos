@@ -39,6 +39,12 @@ targets:
       properties:
         LSUIElement: true
         UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).ProbeSceneDelegate
     scheme: {}
     dependencies:
       - target: macOSBridge
