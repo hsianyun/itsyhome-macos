@@ -142,7 +142,7 @@ struct AccessoryRowConfig {
 
 // MARK: - Accessory row view
 
-class AccessoryRowView: NSTableCellView {
+class AccessoryRowView: NSView {
 
     private let cardBackground = NSView()
     private var dragHandle: DragHandleView?

@@ -15,31 +15,31 @@ final class SettingsProbeUITests: XCTestCase {
         func wait(_ description: String, _ condition: @escaping ([String: Any]) -> Bool) {
             let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition(state()) }, object: nil)
             let result = XCTWaiter.wait(for: [ready], timeout: 10)
-            if result != .completed { print(app.debugDescription) }
+            if result != .completed { print("PROBE_STATE \(state())"); print(app.debugDescription) }
             XCTAssertEqual(result, .completed, description)
         }
         wait("fixture ready") { $0["ready"] as? Bool == true }
-        print(app.debugDescription)
         let initialUpdates = try XCTUnwrap(state()["dataUpdates"] as? Int)
-        let disclosure = app.buttons["probe.disclosure.one"]
-        XCTAssertTrue(disclosure.waitForExistence(timeout: 5))
-        disclosure.click()
+        let window = app.windows["Settings"]
+        func point(_ kind: String, _ room: String) throws -> XCUICoordinate {
+            let controls = state()["controls"] as? [String: [String: [Double]]]
+            let p = try XCTUnwrap(controls?[room]?[kind])
+            XCTAssertEqual(p.count, 2)
+            return window.coordinate(withNormalizedOffset: CGVector(dx: CGFloat(p[0]), dy: CGFloat(p[1])))
+        }
+        // These are real OS mouse events at the controls' measured positions,
+        // not calls to the table, button actions or preference setters.
+        try point("disclosure", "one").click()
         wait("room expands through a real window click") { $0["expanded"] as? Bool == true }
-        app.buttons["probe.disclosure.one"].click()
+        try point("disclosure", "one").click()
         wait("room collapses") { $0["expanded"] as? Bool == false }
-
-        app.buttons["probe.eye.one"].click()
+        try point("eye", "one").click()
         wait("eye hides the room in the actual menu") { $0["hidden"] as? Bool == true && $0["menuContainsOne"] as? Bool == false }
-        app.buttons["probe.eye.one"].click()
+        try point("eye", "one").click()
         wait("eye restores the room") { $0["hidden"] as? Bool == false && $0["menuContainsOne"] as? Bool == true }
-
-        let source = app.buttons["probe.disclosure.one"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: -18, dy: 0))
-        let end = app.buttons["probe.disclosure.three"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: -18, dy: 12))
-        source.click(forDuration: 0.3, thenDragTo: end)
+        try point("drag", "one").click(forDuration: 0.3, thenDragTo: point("after", "three"))
         wait("drag persists the new order") { $0["order"] as? [String] == ["two", "three", "one"] && $0["savedOrder"] as? [String] == ["two", "three", "one"] }
-        let back = app.buttons["probe.disclosure.one"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: -18, dy: 0))
-        let top = app.buttons["probe.disclosure.two"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: -18, dy: -12))
-        back.click(forDuration: 0.3, thenDragTo: top)
+        try point("drag", "one").click(forDuration: 0.3, thenDragTo: point("before", "two"))
         wait("a second drag restores the order") { $0["order"] as? [String] == ["one", "two", "three"] && $0["savedOrder"] as? [String] == ["one", "two", "three"] }
         XCTAssertEqual(state()["dataUpdates"] as? Int, initialUpdates, "Local actions must not rebroadcast platform snapshots or reconfigure Settings")
         XCTAssertEqual(state()["climateEnabled"] as? Bool, true)

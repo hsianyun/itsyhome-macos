@@ -90,7 +90,7 @@ Build **33002** fixes the older local build's "Home Assistant is not configured"
 
 Build **33004** restores the original Home click handling and avoids rebuilding Settings again after visibility/order changes. Its workflow additionally checks room expansion, hiding/unhiding and room reordering with UI automation in a Catalyst app using the full production plugin. Replace the previous app as usual; credentials and sensor selections are retained.
 
-Build **33003** fixes Home list expansion, visibility-button clicks and scrolling/selection in the Advanced sensor-source menus. Quit the old app and replace it with this build. Existing settings and credentials are retained; allow login-Keychain access if prompted after the update. Home now lists individual sensors even when summary mode is enabled, so you can expand sensor-only rooms and manage each sensor's visibility.
+Build **33003** improved the Advanced sensor menus and made individual sensors manageable with summary mode enabled. Use **33004 or later** for the corrected Home interaction and refresh behavior. Existing credentials and sensor selections are retained; allow login-Keychain access if prompted after an update.
 
 1. Open **Settings → Advanced**.
 2. Enable **Temperature and humidity in menu bar**.

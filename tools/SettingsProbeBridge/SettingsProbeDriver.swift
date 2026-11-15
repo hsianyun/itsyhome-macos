@@ -8,6 +8,8 @@ final class SettingsProbeDriver: NSObject, SettingsProbe {
     private var timer: Timer?
     private var observer: NSObjectProtocol?
     private var dataUpdates = 0
+    private var eventMonitor: Any?
+    private var lastMouseHit = "none"
     private let stateLabel = NSTextField(wrappingLabelWithString: "starting")
     private var stateWindow: NSWindow!
     private let roomIds = (1...3).map { UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", $0))! }
@@ -28,6 +30,14 @@ final class SettingsProbeDriver: NSObject, SettingsProbe {
             self?.dataUpdates += 1
         }
         controller = MacOSController()
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+            if let root = event.window?.contentView, let parent = root.superview {
+                let point = parent.convert(event.locationInWindow, from: nil)
+                let hit = root.hitTest(point)
+                self?.lastMouseHit = "\(event.window?.title ?? "none"): \(hit.map { String(describing: type(of: $0)) } ?? "nil")"
+            }
+            return event
+        }
         // Let the normal missing-credentials navigation finish before loading
         // a synthetic platform snapshot; no real HA server or token is used.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.showFixture() }
@@ -74,20 +84,39 @@ final class SettingsProbeDriver: NSObject, SettingsProbe {
               let home = descendants(root).compactMap({ $0 as? AccessoriesSettingsView }).first else { return }
         root.layoutSubtreeIfNeeded()
         var displayed: [String] = []
+        var controls: [String: [String: [Double]]] = [:]
+        func position(_ point: NSPoint, in view: NSView) -> [Double] {
+            let point = view.convert(point, to: nil)
+            let frame = view.window!.frame
+            return [Double(point.x / frame.width), Double(1 - point.y / frame.height)]
+        }
         for (row, item) in home.roomTableItems.enumerated() {
             guard case .header(let room, _, _, _) = item,
                   let index = roomIds.firstIndex(where: { $0.uuidString == room.uniqueIdentifier }) else { continue }
             let name = ["one", "two", "three"][index]
             displayed.append(name)
             guard let cell = home.roomsTableView.view(atColumn: 0, row: row, makeIfNecessary: false) else { continue }
+            cell.layoutSubtreeIfNeeded()
+            var positions: [String: [Double]] = [:]
             // Identify the real controls for UI automation; never invoke them.
             for button in descendants(cell).compactMap({ $0 as? NSButton }) {
                 switch button.action.map(NSStringFromSelector) {
-                case "eyeTapped": button.setAccessibilityIdentifier("probe.eye.\(name)")
-                case "chevronTapped": button.setAccessibilityIdentifier("probe.disclosure.\(name)")
+                case "eyeTapped":
+                    button.setAccessibilityIdentifier("probe.eye.\(name)")
+                    positions["eye"] = position(NSPoint(x: button.bounds.midX, y: button.bounds.midY), in: button)
+                case "chevronTapped":
+                    button.setAccessibilityIdentifier("probe.disclosure.\(name)")
+                    positions["disclosure"] = position(NSPoint(x: button.bounds.midX, y: button.bounds.midY), in: button)
                 default: break
                 }
             }
+            if let handle = descendants(cell).first(where: { $0 is DragHandleView }) {
+                positions["drag"] = position(NSPoint(x: handle.bounds.midX, y: handle.bounds.midY), in: handle)
+            }
+            let rect = home.roomsTableView.rect(ofRow: row)
+            positions["before"] = position(NSPoint(x: rect.minX + 13, y: rect.minY + 5), in: home.roomsTableView)
+            positions["after"] = position(NSPoint(x: rect.minX + 13, y: rect.maxY - 5), in: home.roomsTableView)
+            controls[name] = positions
         }
         let prefs = PreferencesManager.shared
         let state: [String: Any] = [
@@ -99,7 +128,8 @@ final class SettingsProbeDriver: NSObject, SettingsProbe {
             "savedOrder": prefs.roomOrder.compactMap { id in roomIds.firstIndex { $0.uuidString == id }.map { ["one", "two", "three"][$0] } },
             "dataUpdates": dataUpdates,
             "climateEnabled": prefs.menuBarClimateEnabled,
-            "temperatureId": prefs.menuBarTemperatureSensorId ?? ""
+            "temperatureId": prefs.menuBarTemperatureSensorId ?? "",
+            "controls": controls, "lastMouseHit": lastMouseHit
         ]
         let text = String(decoding: try! JSONSerialization.data(withJSONObject: state, options: .sortedKeys), as: UTF8.self)
         if stateLabel.stringValue != text {
